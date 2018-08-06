@@ -1,0 +1,23 @@
+{
+	"name": "bdk/form",
+	"description": "Form framework",
+	"keywords": ["css"],
+	"homepage": "http://github.com/bkdotcom/Form",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Brad Kent",
+			"email": "bkfake-packagist@yahoo.com",
+			"homepage": "http://www.bradkent.com/",
+			"role": "Developer"
+		}
+	],
+	"autoload": {
+		"classmap": ["src/Form.php"],
+		"psr-4": { "bdk\\Form\\": "src/" }
+	},
+	"require": {
+		"php": ">=5.3.0",
+		"bdk/toolbox": "dev-master"
+	}
+}
