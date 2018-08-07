@@ -46,7 +46,7 @@ class FieldFactory extends FieldBase
 		if ($definition) {
 			$classes = array(
 				$definition,
-				'\\bdk\\Form\\fieldDefinitions\\'.\ucfirst($definition),
+				'\\bdk\\Form\\FieldDefinitions\\'.\ucfirst($definition),
 			);
 			foreach ($classes as $classCheck) {
 				if (\class_exists($classCheck)) {
