@@ -13,9 +13,9 @@ foreach ($classMap as $old => $new) {
     }
 }
 
-// require __DIR__.'/../vendor/autoload.php';
-require '/Users/bkent/Sites/localhost/bradkent.com/vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';
 
+/*
 \bdk\Debug::_setCfg(array(
 	'collect' => true,
 	'output' => true,
@@ -30,6 +30,7 @@ require '/Users/bkent/Sites/localhost/bradkent.com/vendor/autoload.php';
         }
     },
 ));
+*/
 
 foreach (glob(__DIR__.'/*.php') as $filename) {
 	$basename = basename($filename, '.php');

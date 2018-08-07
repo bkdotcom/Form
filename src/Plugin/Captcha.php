@@ -27,7 +27,7 @@ class Captcha
 		foreach ($cfg as $k => $v) {
 			$this->cfg[$k] = $v;
 		}
-		if (file_exists(__DIR__.'/'.$this->font)) {
+		if (\file_exists(__DIR__.'/'.$this->font)) {
 			$this->font = __DIR__.'/'.$this->font;
 		}
 	}
@@ -48,7 +48,7 @@ class Captcha
 			$possible = '23456789bcdfghjkmnpqrstvwxyz';
 			$code = '';
 			for ($i=0; $i < $length; $i++) {
-				$code .= substr($possible, mt_rand(0, strlen($possible)-1), 1);
+				$code .= \substr($possible, \mt_rand(0, \strlen($possible)-1), 1);
 			}
 			$_SESSION['captcha_code'] = $code;
 		}
@@ -69,36 +69,36 @@ class Captcha
 			'height' => 40,
 			// 'length' => 6
 		);
-		$params = array_merge($param_defaults, $params);
+		$params = \array_merge($param_defaults, $params);
 		$code = $this->generateCode($this->length);
 		$font_size = $params['height'] * $this->font_scale;
-		$image = @imagecreate($params['width'], $params['height']) or die('Cannot initialize new GD image stream');
+		$image = @\imagecreate($params['width'], $params['height']) or die('Cannot initialize new GD image stream');
 		// set the colors
-		$color_bkg = imagecolorallocate($image, 0, 0, 0);
+		$color_bkg = \imagecolorallocate($image, 0, 0, 0);
 		// $color_text = imagecolorallocate($image, 20, 40, 100);
-		$color_text = imagecolorallocate($image, 200, 200, 200);
-		$color_noise = imagecolorallocate($image, 150, 150, 150);
+		$color_text = \imagecolorallocate($image, 200, 200, 200);
+		$color_noise = \imagecolorallocate($image, 150, 150, 150);
 		// generate random dots in background
 		for ($i=0; $i<($params['width']*$params['height'])/$this->dot_divisor; $i++) {
-			imagefilledellipse($image, mt_rand(0, $params['width']), mt_rand(0, $params['height']), 1, 1, $color_noise);
+			\imagefilledellipse($image, \mt_rand(0, $params['width']), \mt_rand(0, $params['height']), 1, 1, $color_noise);
 		}
 		// generate random lines in background
 		for ($i=0; $i<($params['width']*$params['height'])/$this->line_divisor; $i++) {
-			imageline($image, mt_rand(0, $params['width']), mt_rand(0, $params['height']), mt_rand(0, $params['width']), mt_rand(0, $params['height']), $color_noise);
+			\imageline($image, \mt_rand(0, $params['width']), \mt_rand(0, $params['height']), \mt_rand(0, $params['width']), \mt_rand(0, $params['height']), $color_noise);
 		}
 		// create textbox and add text
-		$textbox = imagettfbbox($font_size, 0, $this->font, $code); // or die('Error in imagettfbbox function');
+		$textbox = \imagettfbbox($font_size, 0, $this->font, $code); // or die('Error in imagettfbbox function');
 		$x = ($params['width'] - $textbox[4])/2;
 		$y = ($params['height'] - $textbox[5])/2;
-		imagettftext($image, $font_size, 0, $x, $y, $color_text, $this->font, $code); // or die('Error in imagettftext function');
+		\imagettftext($image, $font_size, 0, $x, $y, $color_text, $this->font, $code); // or die('Error in imagettftext function');
 		// output captcha image to browser
-		header('Last-Modified: '.date('r'));
-		header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
-		header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Date in the past
-		header('Content-Type: image/jpeg');
-		header('Pragma: no-cache');
-		imagejpeg($image);
-		imagedestroy($image);
+		\header('Last-Modified: '.\date('r'));
+		\header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
+		\header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Date in the past
+		\header('Content-Type: image/jpeg');
+		\header('Pragma: no-cache');
+		\imagejpeg($image);
+		\imagedestroy($image);
 	}
 
 	/**
