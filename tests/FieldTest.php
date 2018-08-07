@@ -25,7 +25,7 @@ class FieldTest extends \PHPUnit\Framework\TestCase
             list($buildControl, $fieldFactory, $props, $htmlExpect, $tagOnlyExpect) = $row;
 
             $field = $fieldFactory->build($props);
-            $this->assertInstanceOf(Field::class, $field);
+            $this->assertInstanceOf(\bdk\Form\Field, $field);
             $html = $field->build();
             $html = preg_replace('/\n\s+/', "\n", $html);
             $htmlExpect = preg_replace('/\n\s+/', "\n", $htmlExpect);
@@ -52,7 +52,7 @@ class FieldTest extends \PHPUnit\Framework\TestCase
             list($buildControl, $fieldFactory, $props, $htmlExpect, $tagOnlyExpect) = $row;
 
             $field = $fieldFactory->build($props);
-            $this->assertInstanceOf(Field::class, $field);
+            $this->assertInstanceOf(\bdk\Form\Field, $field);
             $html = $field->build();
             $html = preg_replace('/\n\s+/', "\n", $html);
             $htmlExpect = preg_replace('/\n\s+/', "\n", $htmlExpect);
