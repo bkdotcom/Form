@@ -2,67 +2,82 @@
 
 namespace bdk\Form;
 
-use bdk\Form\Field;
 use bdk\Html;
 use bdk\Str;
+use bdk\Form\Control;
+use bdk\Form\ControlBase;
+// use bdk\Form\ControlFactory;
+use bdk\PubSub\Event;
+use bdk\PubSub\Manager as EventManager;
 
 /**
  * Build Input
  */
-class BuildControl extends FieldBase
+class ControlBuilder extends ControlBase
 {
 
-    protected $debug;
-    // protected $defaultProps = array();
-    protected $field;
+    public $eventManager;
+    protected $control;
     protected $building = array();
+    // protected $controlFactory;
 
     /**
      * Constructor
      *
-     * @param array $defaultProps     default properties
-     * @param array $defaultPropsType type-specific default properties
+     * @param EventManager   $eventManager   event manager instance
+     * @param ControlFactory $controlFactory controlFactory instance
      */
-    public function __construct($defaultProps = array(), $defaultPropsType = array())
+    public function __construct(EventManager $eventManager)
     {
-        $this->fieldFactory = new FieldFactory($this, null, $defaultProps, $defaultPropsType);
+        $this->eventManager = $eventManager;
+        // $this->controlFactory = $controlFactory;
+        $this->eventManager->subscribe('form.buildControl', array($this, 'onBuildControl'));
     }
 
     /**
      * Build a form input control
      *
-     * @param Field|array $field Field or Field properties
+     * @param Control|array $control Control or control properties
      *
      * @return string html
      */
-    public function build($field)
+    public function build($control)
     {
         $return = '';
-        if (\is_array($field)) {
-            $field = $this->fieldFactory->build($field);
+        if (\is_array($control)) {
+            $control = $this->controlFactory->build($control);
         }
-        $this->field = $field;
-        $this->props = $field->props;
-        $id = $field->getId();
+        \bdk\Debug::_group(__METHOD__, $control->attribs['name']);
+        $this->control = $control;
+        $this->props = $control->props;
+        $id = $control->getId();
         $isBuilding = \in_array($id, $this->building);
-        $uniqueId = $field->getUniqueId(!$isBuilding);
+        $uniqueId = $control->getUniqueId(!$isBuilding);
         $this->setIds($uniqueId);
-        if (!$isBuilding) {
-            $this->building[] = $id;
-        }
         $this->addAttributes();
         if (!$isBuilding) {
-            $return = $field->doBuild();
+            $this->building[] = $id;
+            $return = $this->eventManager->publish('form.buildControl', $control, array(
+                'return' => $return,
+            ))['return'];
         }
-        if (!$return) {
-            $return = $this->doBuild();
-        }
-        $return = $this->removeEmptyTags($return);
         $key = \array_search($id, $this->building);
         if ($key !== false) {
             unset($this->building[$key]);
         }
+        \bdk\Debug::_groupEnd();
         return $return;
+    }
+
+    public function onBuildControl(Event $event)
+    {
+        // see if control has a doBuild method that returns something or a callable 'build' property
+        $return = $event->getSubject()->doBuild();
+        if (!$return) {
+            $return = $this->doBuild();
+        }
+        $return = $this->removeEmptyTags($return);
+        $event['return'] = $return;
     }
 
     /**
@@ -83,48 +98,13 @@ class BuildControl extends FieldBase
             if ($this->props['invalidReason']) {
                 $this->props['helpBlock'] = $this->props['invalidReason'];
             }
+        } else {
+            $this->classRemove($this->props['attribsContainer'], 'has-error');
         }
         if ($this->props['helpBlock']) {
             // we don't want aria-describedby attrib when tagOnly
             $this->props['attribs']['aria-describedby'] = $this->props['attribsHelpBlock']['id'];
         }
-    }
-
-    /**
-     * Build the html for the given
-     *
-     * @return string html
-     */
-    protected function doBuild()
-    {
-        switch ($this->props['attribs']['type']) {
-            case 'checkbox':
-                $return = $this->buildCheckbox();
-                break;
-            case 'html':
-                $return = $this->props['attribs']['value'];
-                break;
-            case 'radio':
-                $return = $this->buildRadio();
-                break;
-            case 'select':
-                $return = $this->buildSelect();
-                break;
-            case 'textarea':
-                $return = $this->buildTextarea();
-                break;
-            case 'button':
-            case 'reset':
-            case 'submit':
-                $return = $this->buildButton();
-                break;
-            case 'static':
-                $return = $this->buildStatic();
-                break;
-            default:
-                $return = $this->buildDefault();
-        }
-        return $return;
     }
 
     /**
@@ -230,7 +210,7 @@ class BuildControl extends FieldBase
         $isMultiple = \count($props['options']) > 1;
         foreach ($props['options'] as $i => $optProps) {
             // unset($optProps['attribs']['tagname']);
-            $optProps = $this->mergeProps(array(
+            $optProps = ControlBase::mergeProps(array(
                 array(
                     'attribs' => $props['attribs'], // name, type, & other "global" attributes
                 ),
@@ -491,6 +471,89 @@ class BuildControl extends FieldBase
     }
 
     /**
+     * Add classname(s)
+     *
+     * @param array        $attribs    [description]
+     * @param string|array $classNames [description]
+     *
+     * @return void
+     */
+    protected function classAdd(&$attribs, $classNames)
+    {
+        $classNamesCur = isset($attribs['class'])
+            ? $attribs['class']
+            : array();
+        if (!\is_array($classNamesCur)) {
+            $classNamesCur = \explode(' ', $classNamesCur);
+        }
+        if (!\is_array($classNames)) {
+            $classNames = \explode(' ', $classNames);
+        }
+        $classNames = \array_merge($classNamesCur, $classNames);
+        $classNames = \array_unique($classNames);
+        $attribs['class'] = $classNames;
+    }
+
+    /**
+     * remove classname(s)
+     *
+     * @param array        $attribs    [description]
+     * @param string|array $classNames [description]
+     *
+     * @return void
+     */
+    protected function classRemove(&$attribs, $classNames)
+    {
+        $classNamesCur = isset($attribs['class'])
+            ? $attribs['class']
+            : array();
+        if (!\is_array($classNamesCur)) {
+            $classNamesCur = \explode(' ', $classNamesCur);
+        }
+        if (!\is_array($classNames)) {
+            $classNames = \explode(' ', $classNames);
+        }
+        $attribs['class'] = \array_diff($classNamesCur, $classNames);
+    }
+
+    /**
+     * Build the html for the given
+     *
+     * @return string html
+     */
+    protected function doBuild()
+    {
+        switch ($this->props['attribs']['type']) {
+            case 'checkbox':
+                $return = $this->buildCheckbox();
+                break;
+            case 'html':
+                $return = $this->props['attribs']['value'];
+                break;
+            case 'radio':
+                $return = $this->buildRadio();
+                break;
+            case 'select':
+                $return = $this->buildSelect();
+                break;
+            case 'textarea':
+                $return = $this->buildTextarea();
+                break;
+            case 'button':
+            case 'reset':
+            case 'submit':
+                $return = $this->buildButton();
+                break;
+            case 'static':
+                $return = $this->buildStatic();
+                break;
+            default:
+                $return = $this->buildDefault();
+        }
+        return $return;
+    }
+
+    /**
      * Remove empty tags from string
      *
      * @param string $html html
@@ -521,24 +584,27 @@ class BuildControl extends FieldBase
      */
     protected function setIds($id)
     {
-        if ($id) {
-            $this->props = $this->mergeProps(array(
-                $this->props,
-                array(
-                    'attribsContainer' => array(
-                        'id' => $id.'_container',
-                    ),
-                    'attribs' => array(
-                        'id' => $id,
-                    ),
-                    'attribsLabel' => array(
-                        'for' => $id,
-                    ),
-                    'attribsHelpBlock' => array(
-                        'id' => $id.'_help_block',
-                    ),
-                ),
-            ));
+        if (!$id) {
+            return;
         }
+        $this->props = $this->mergeProps(array(
+            $this->props,
+            array(
+                'attribsContainer' => array(
+                    'id' => $id.'_container',
+                ),
+                'attribs' => array(
+                    'id' => $id,
+                ),
+                'attribsLabel' => array(
+                    'for' => isset($this->props['attribsLabel']['for'])
+                        ? $this->props['attribsLabel']['for']
+                        : $id,
+                ),
+                'attribsHelpBlock' => array(
+                    'id' => $id.'_help_block',
+                ),
+            ),
+        ));
     }
 }

@@ -1,21 +1,21 @@
 <?php
 
-namespace bdk\Form\FieldDefinitions;
+namespace bdk\Form\ControlDefinitions;
 
 use bdk\Form;
-use bdk\Form\BuildControl;
-use bdk\Form\Field;
+use bdk\Form\Control;
+use bdk\Form\ControlBuilder;
 
 /**
  * Dollar Amount
  */
-class Dollar extends Field
+class Dollar extends Control
 {
 
     /**
      * {@inheritDoc}
      */
-    public function __construct($props = array(), BuildControl $buildControl = null, Form $form = null)
+    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
     {
         $props = $this->mergeProps(array(
             array(
@@ -30,19 +30,19 @@ class Dollar extends Field
             ),
             $props,
         ));
-        parent::__construct($props, $buildControl, $form);
+        parent::__construct($props, $controlBuilder, $form);
     }
 
     /**
      * Get formated value
      *
-     * @param object $field instance
+     * @param Control $control instance
      *
      * @return string
      */
-    public function getValFormatted($field)
+    public function getValFormatted(Control $control)
     {
-        $val = $field->valRaw();
+        $val = $control->valRaw();
         $val = \preg_replace('/[^\d.-]/', '', $val);
         $val = \strlen($val)
             ? \sprintf('%.2f', $val)

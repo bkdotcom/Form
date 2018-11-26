@@ -1,21 +1,21 @@
 <?php
 
-namespace bdk\Form\FieldDefinitions;
+namespace bdk\Form\ControlDefinitions;
 
 use bdk\Form;
-use bdk\Form\BuildControl;
-use bdk\Form\Field;
+use bdk\Form\Control;
+use bdk\Form\ControlBuilder;
 
 /**
  * Social Security Number
  */
-class Ssn extends Field
+class Ssn extends Control
 {
 
     /**
      * {@inheritDoc}
      */
-    public function __construct($props = array(), BuildControl $buildControl = null, Form $form = null)
+    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
     {
         $props = $this->mergeProps(array(
             array(
@@ -30,11 +30,11 @@ class Ssn extends Field
             ),
             $props,
         ));
-        parent::__construct($props, $buildControl, $form);
+        parent::__construct($props, $controlBuilder, $form);
     }
 
     /**
-     * Validate field
+     * Validate control
      *
      * @return boolean
      */
@@ -62,13 +62,13 @@ class Ssn extends Field
     /**
      * Get formated value
      *
-     * @param object $field instance
+     * @param Control $control instance
      *
      * @return string
      */
-    public function getValFormatted($field)
+    public function getValFormatted(Control $control)
     {
-        $val = $field->valRaw();
+        $val = $control->valRaw();
         if (\preg_match('|^(\d{3})[\. -]?(\d{2})[\. -]?(\d{4})$|', $val, $matches)) {
             list($area, $group, $serial) = \array_slice($matches, 1);
             return $area.'-'.$group.'-'.$serial;

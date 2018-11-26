@@ -1,21 +1,21 @@
 <?php
 
-namespace bdk\Form\FieldDefinitions;
+namespace bdk\Form\ControlDefinitions;
 
 use bdk\Form;
-use bdk\Form\Field;
-use bdk\Form\BuildControl;
+use bdk\Form\Control;
+use bdk\Form\ControlBuilder;
 
 /**
  * Credit Card
  */
-class Creditcard extends Field
+class Creditcard extends Control
 {
 
     /**
      * {@inheritDoc}
      */
-    public function __construct($props = array(), BuildControl $buildControl = null, Form $form = null)
+    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
     {
         $props = $this->mergeProps(array(
             array(
@@ -32,11 +32,11 @@ class Creditcard extends Field
             ),
             $props,
         ));
-        parent::__construct($props, $buildControl, $form);
+        parent::__construct($props, $controlBuilder, $form);
     }
 
     /**
-     * Validate field
+     * Validate control
      *
      * @return boolean
      */
@@ -73,13 +73,13 @@ class Creditcard extends Field
     /**
      * Get formated value
      *
-     * @param object $field instance
+     * @param Control $control instance
      *
      * @return string
      */
-    public function getValFormatted($field)
+    public function getValFormatted(Control $control)
     {
-        $digits = \preg_replace('/\D/', '', $field->attribs['value']);  // remove all non-digits
+        $digits = \preg_replace('/\D/', '', $control->attribs['value']);  // remove all non-digits
         return \implode('-', \str_split($digits, 4));
         // $return = \implode('-', \sscanf($answer, '%4s%4s%4s%4s'));
     }

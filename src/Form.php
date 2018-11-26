@@ -3,15 +3,15 @@
 namespace bdk;
 
 use bdk\ArrayUtil;
-use bdk\PubSub\EventManager;
+use bdk\Str;
 use bdk\Form\Alerts;
-use bdk\Form\BuildControl;
 use bdk\Form\Complete;
-use bdk\Form\Field;
-use bdk\Form\FieldFactory;
+use bdk\Form\Control;
+use bdk\Form\ControlBuilder;
+use bdk\Form\ControlFactory;
 use bdk\Form\Output;
 use bdk\Form\Persist;
-use bdk\Str;
+use bdk\PubSub\Manager as EventManager;
 
 /**
  * Form
@@ -37,11 +37,12 @@ class Form
     );
     public $persist;
 
-    public $alerts;         // alerts instance
-    public $buildControl;   // buildControl instance
-    public $fieldFactory;
+    public $alerts;           // alerts instance
+    public $controlBuilder;   // controlBuilder instance
+    public $controlFactory;
     public $currentFields = array();
     public $currentValues = array();
+    public $eventManager;
 
     /**
      * Constructor
@@ -64,15 +65,20 @@ class Form
                 // pages                => array        // pass one or the other
                 // fields               => array        //
                 'name'                  => 'myform',
-                'buildAlerts'           => array($this->alerts, 'buildAlerts'),
-                'buildOutput'           => array('\bdk\Form\Output', 'buildFields'), // or null/false to not output
-                'onComplete'            => null,        // ('email'|'log'|false|null|callable)
+                'buildAlerts'           => \method_exists($this, 'buildAlerts')
+                    ? array($this, 'buildAlerts')
+                    : array($this->alerts, 'buildAlerts'),
+                'buildOutput'           => \method_exists($this, 'buildOutput')
+                    ? array($this, 'buildOutput')
+                    : array('\bdk\Form\Output', 'buildOutput'), // or null/false to not output
+                'onComplete'            => array($this, 'onComplete'),  // ('email'|'log'|false|null|callable)
                                                             // if returns string, used as output string
                                                             // if returns false, error occured
-                'pre'                   => null,        // callable to be called before fields are prepped
+                'onRedirect'            => array($this, 'onRedirect'),
+                'pre'                   => array($this, 'pre'), // callable to be called before fields are prepped
                                                             // if returns false, error occured
-                'post'                  => null,        // callable to be called after form has been submitted, fields prepped/checked
-                                                        // if returns false, error occured
+                'post'                  => array($this, 'post'),    // callable to be called after form has been submitted, fields prepped/checked
+                                                            // if returns false, error occured
                 // 'showUndefinedFields'=> false,
                 'logFile'               => null,        // used when on_complete = 'log', default is 'name'.csv
                 'logDelimitter'         => ',',
@@ -127,8 +133,8 @@ class Form
             array('int_keys'=>'overwrite')
         );
         $this->debug->log('cfg', $this->cfg);
-        $this->buildControl = new BuildControl($this->cfg['field']);
-        $this->fieldFactory = new FieldFactory($this->buildControl, $this, $this->cfg['field']);
+        $this->controlBuilder = new ControlBuilder($this->eventManager);
+        $this->controlFactory = new ControlFactory($this->controlBuilder, $this, $this->cfg['field']);
         $this->debug->groupEnd();
     }
 
@@ -151,6 +157,7 @@ class Form
             return $this->status[$property];
         } else {
             $this->debug->log('property', $property);
+            return $this->{$property};
         }
     }
 
@@ -159,9 +166,9 @@ class Form
      *
      * @param string $fieldName field's name
      *
-     * @return Field
+     * @return Control
      */
-    public function getField($fieldName)
+    public function getControl($fieldName)
     {
         $this->debug->group(__METHOD__, $fieldName);
         $field = false;
@@ -175,7 +182,7 @@ class Form
             $field = &$this->currentFields[$fieldName];
             if (!\is_object($field)) {
                 $field['pageI'] = $this->persist->get('i');
-                $this->currentFields[$fieldName] = $this->buildField($field, $fieldName);
+                $this->currentFields[$fieldName] = $this->buildControl($field, $fieldName);
             }
         } elseif (isset($this->cfg['pages'][$pageName])) {
             $pages = $this->persist->get('pages');
@@ -190,7 +197,7 @@ class Form
                     ) {
                         $this->debug->info('found field');
                         $fieldProps['pageI'] = $pageI;
-                        $field = $this->buildField($fieldProps, $k);
+                        $field = $this->buildControl($fieldProps, $k);
                         $val = $this->getValue($fieldName, $pageI);
                         $field->val($val, false);
                         break 2;
@@ -206,7 +213,7 @@ class Form
     /**
      * Get list of invalid fields
      *
-     * @return Field[]
+     * @return Control[]
      */
     public function getInvalidFields()
     {
@@ -332,7 +339,7 @@ class Form
         $this->debug->log('count(currentFields)', \count($this->currentFields));
         $this->currentValues = $this->persist->get('currentPage.values');
         // $this->debug->warn('currentValues', $this->currentValues);
-        if (!empty($cfg['pre']) && \is_callable($cfg['pre'])) {
+        if (\is_callable($cfg['pre'])) {
             $return = \call_user_func($cfg['pre'], $this);
             if ($return === false) {
                 $status['error'] = 'pre error';
@@ -425,7 +432,7 @@ class Form
      *
      * @return object
      */
-    protected function buildField($fieldProps, $nameDefault = null)
+    protected function buildControl($fieldProps, $nameDefault = null)
     {
         $this->debug->group(__METHOD__, $nameDefault);
         if (!isset($fieldProps['attribs']['name']) && !isset($fieldProps['name'])) {
@@ -436,7 +443,7 @@ class Form
             $fieldProps['attribs']['value'] = $fieldProps['newPage'];
             unset($fieldProps['newPage']);
         }
-        $field = $this->fieldFactory->build($fieldProps);
+        $field = $this->controlFactory->build($fieldProps);
         if ($this->status['submitted'] && $field->attribs['type'] != 'newPage') {
             $pageI = $this->persist->get('i');
             $value = $this->persist->get('pages/'.$pageI.'/values/'.$field->attribs['name']);
@@ -463,7 +470,7 @@ class Form
             $field = $this->currentFields[$k];
             unset($this->currentFields[$k]);
             if (!\is_object($field)) {
-                $field = $this->buildField($field, $k);
+                $field = $this->buildControl($field, $k);
             }
             $field->pageI = $pageI;
             if ($field->attribs['type'] == 'newPage') {
@@ -493,7 +500,7 @@ class Form
                 'attribs' => array('class' => array('btn btn-primary', 'replace')),
                 'tagOnly' => true,
             );
-            $this->currentFields['submit'] = $this->fieldFactory->build($fieldArray);
+            $this->currentFields['submit'] = $this->controlFactory->build($fieldArray);
             $this->debug->log('array_keys(currentFields)', \array_keys($this->currentFields));
         }
         if ($status['multipart']) {
@@ -531,23 +538,6 @@ class Form
             $dirname = \dirname($callerInfo['file']);
             $cfg['logFile'] = $dirname.DIRECTORY_SEPARATOR.$cfg['name'].'_log.csv';
         }
-        /*
-            we will use the callable defined in cfg
-            if we have a method defined, define it in cfg
-        */
-        $methods = array(
-            'buildAlerts',
-            'buildOutput',
-            'onComplete',
-            'pre',
-            'post',
-        );
-        foreach ($methods as $method) {
-            if (\method_exists($this, $method)) {
-                $cfg[$method] = array($this, $method);
-            }
-        }
-        // $this->debug->log('cfg', $cfg);
         $this->debug->groupEnd();
     }
 
@@ -616,6 +606,32 @@ class Form
             $this->persist->appendPages(array($firstPageName));
         }
         $this->debug->groupEnd();
+    }
+
+    /**
+     * Extend me
+     *
+     * @return string|boolean
+     */
+    protected function onComplete()
+    {
+        return true;
+    }
+
+    /**
+     * Handle redirect
+     *
+     * @param string $location redirect url
+     *
+     * @return void [description]
+     */
+    protected function onRedirect($location)
+    {
+        $this->debug->warn('onRedirect', $location);
+        // $this->debug->alert('<i class="fa fa-external-link fa-lg" aria-hidden="true"></i> Location: <a class="alert-link" href="'.\htmlspecialchars($location).'">'.\htmlspecialchars($location).'</a>', 'info');
+        $this->debug->log('%cRedirect%c location: <a href="%s">%s</a>', 'font-weight:bold;', '', $location, $location);
+        \header('Location: '.$location);
+        exit;
     }
 
     /**
@@ -718,6 +734,26 @@ class Form
     }
 
     /**
+     * Extend me
+     *
+     * @return boolean
+     */
+    protected function post()
+    {
+        return true;
+    }
+
+    /**
+     * Extend me
+     *
+     * @return boolean
+     */
+    protected function pre()
+    {
+        return true;
+    }
+
+    /**
      * Process submitted values
      *
      * @return void
@@ -804,20 +840,24 @@ class Form
         if (!$this->status['submitted']) {
             return;
         }
-        $this->debug->log('redirecting');
-        $event = $this->eventManager->publish('page.redirect', null, array('location' => $_SERVER['REQUEST_URI']));
-        $location = $event['location'];
-        $this->debug->log('%cLocation:%c <a href="%s">%s</a>', 'font-weight:bold;', '', $location, $location);
+        $this->debug->log('redirecting...');
         if (\headers_sent($file, $line)) {
             $this->debug->warn('headers alrady sent from '.$file.' line '.$line);
             return;
         }
-        if ($event->isPropagationStopped()) {
-            $this->debug->alert('<i class="fa fa-external-link fa-lg" aria-hidden="true"></i> Location: <a class="alert-link" href="'.\htmlspecialchars($location).'">'.\htmlspecialchars($location).'</a>', 'info');
-        } else {
-            \header('Location: '.$location);
+        /*
+            Subscribe to form.redirect to change location, or stop propagation
+        */
+        $event = $this->eventManager->publish(
+            'form.redirect',
+            $this,
+            array(
+                'location' => $_SERVER['REQUEST_URI'],
+            )
+        );
+        if (!$event->isPropagationStopped()) {
+            \call_user_func($this->cfg['onRedirect'], $event['location']);
         }
-        throw new \Exception('exit');
     }
 
     /**

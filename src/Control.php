@@ -4,14 +4,15 @@ namespace bdk\Form;
 
 use bdk\ArrayUtil;
 use bdk\Form;
-use bdk\Form\BuildControl;
+use bdk\Form\ControlBuilder;
 
-class Field extends FieldBase
+class Control extends ControlBase
 {
 
+    public $form;
     protected $debug;
-    protected $buildControl;
-    protected $form;
+    protected $attribs;
+    protected $controlBuilder;
     protected $callStack = array();
 
     /**
@@ -22,17 +23,16 @@ class Field extends FieldBase
     /**
      * Constructor
      *
-     * @param array        $props        field properties/definition
-     * @param BuildControl $buildControl BuildControl instance
-     * @param Form         $form         parent form object]
+     * @param array          $props          Control properties/definition
+     * @param ControlBuilder $controlBuilder ControlBuilder instance
+     * @param Form           $form           parent form object]
      */
-    public function __construct($props = array(), BuildControl $buildControl = null, Form $form = null)
+    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
     {
         $this->debug = \bdk\Debug::getInstance();
-        $this->buildControl = $buildControl;
+        $this->controlBuilder = $controlBuilder;
         $this->form = $form;
         $this->setProps($props);
-        $this->attribs = &$this->props['attribs'];
     }
 
     /**
@@ -45,6 +45,7 @@ class Field extends FieldBase
      */
     public function __get($key)
     {
+        $this->debug->log('__get', $key);
         if (\method_exists($this, 'get'.\ucfirst($key))) {
             $method = 'get'.\ucfirst($key);
             return $this->{$method}();
@@ -92,7 +93,7 @@ class Field extends FieldBase
      */
     public function build($propOverride = array())
     {
-        $this->debug->info(__METHOD__, $this->attribs['name']);
+        // $this->debug->info(__METHOD__, $this->attribs['name']);
         if ($propOverride == 'tagOnly') {
             $propOverride = array('tagOnly' => true);
         } elseif (!\is_array($propOverride)) {
@@ -105,7 +106,7 @@ class Field extends FieldBase
                 $propOverride,
             ));
         }
-        $return = $this->buildControl->build($this);
+        $return = $this->controlBuilder->build($this);
         return $return;
     }
 
@@ -148,7 +149,7 @@ class Field extends FieldBase
     }
 
     /**
-     * Flag a field as invalid
+     * Flag control as invalid
      *
      * @param string $reason The reason that will be given to the user
      *
@@ -157,7 +158,6 @@ class Field extends FieldBase
     public function flag($reason = null)
     {
         $this->props['isValid'] = false;
-        $this->classAdd($this->props['attribsContainer'], 'has-error');
         if ($this->attribs['type'] == 'file' && isset($this->form->currentValues[ $this->attribs['name'] ])) {
             $fileInfo = $this->form->currentValues[ $this->attribs['name'] ];
             \unlink($fileInfo['tmp_name']);
@@ -242,7 +242,7 @@ class Field extends FieldBase
     }
 
     /**
-     * Is field required?
+     * Is control required?
      *
      * @return boolean
      */
@@ -250,7 +250,7 @@ class Field extends FieldBase
     {
         $isRequired = $this->attribs['required'];
         if (\is_string($isRequired)) {
-            $replaced = \preg_replace('/{{(.*?)}}/', '$this->form->getField("$1")->val()', $isRequired);
+            $replaced = \preg_replace('/{{(.*?)}}/', '$this->form->getControl("$1")->val()', $isRequired);
             $evalString = '$isRequired = (bool) '.$replaced.';';
             eval($evalString);
         }
@@ -258,25 +258,30 @@ class Field extends FieldBase
     }
 
     /**
-     * Set field properties
+     * Set control properties
      *
      * @param array $props [description]
      *
      * @return void
      */
-    public function setProps($props = array())
+    public function setProps($props = array(), $merge = true)
     {
         $props = $this->moveShortcuts($props);
-        $type = isset($props['attribs']['type']) ? $props['attribs']['type'] : null;
-        $typeChanging = $type && (!isset($this->attribs['type']) || $type !== $this->attribs['type']);
-        $propsType = $typeChanging && isset($this->defaultPropsType[$type])
-            ? $this->defaultPropsType[$type]
-            : array();
-        $this->props = $this->mergeProps(array(
-            $this->props,
-            $propsType,
-            $props,
-        ));
+        $this->debug->log('setProps');
+        if ($merge) {
+            $type = isset($props['attribs']['type']) ? $props['attribs']['type'] : 'text';
+            $isTypeChanging = !isset($this->props['attribs']['type']) || $type !== $this->props['attribs']['type'];
+            $propsType = $isTypeChanging && isset($this->defaultProps[$type])
+                ? $this->defaultProps[$type]
+                : array();
+            $this->props = $this->mergeProps(array(
+                $this->props ?: $this->defaultProps['default'],
+                $propsType,
+                $props,
+            ));
+        } else {
+            $this->props = $props;
+        }
         if (empty($this->props['attribs']['x-moz-errormessage']) && !empty($this->props['invalidReason'])) {
             $this->props['attribs']['x-moz-errormessage'] = $this->props['invalidReason'];
         }
@@ -290,7 +295,7 @@ class Field extends FieldBase
     }
 
     /**
-     * Set field's value
+     * Set control's value
      *
      * @param mixed   $value value
      * @param boolean $store store the value?
@@ -317,9 +322,9 @@ class Field extends FieldBase
     }
 
     /**
-     * Get or set field's value
+     * Get or set control's value
      * If getting, will return
-     *    + formatted value if field has getValFormatted callable
+     *    + formatted value if control has getValFormatted callable
      *    + raw value otherwise
      *
      * @param mixed   $val   (optional) new value
@@ -345,7 +350,7 @@ class Field extends FieldBase
     }
 
     /**
-     * Return field's raw (user input) value
+     * Return control's raw (user input) value
      *
      * @return mixed
      */
@@ -370,13 +375,12 @@ class Field extends FieldBase
     /**
      * [validate description]
      *
-     * @return [type] [description]
+     * @return boolean
      */
     public function validate()
     {
         $this->debug->groupCollapsed(__METHOD__, $this->attribs['name']);
         $this->props['isValid'] = true;
-        $this->classRemove($this->props['attribsContainer'], 'has-error');
         $attribs = $this->attribs;
         if (\in_array($attribs['type'], array('checkbox','radio','select'))) {  // these types use the 'options' array
             $this->validateCrs();

@@ -1,21 +1,21 @@
 <?php
 
-namespace bdk\Form\FieldDefinitions;
+namespace bdk\Form\ControlDefinitions;
 
 use bdk\Form;
-use bdk\Form\BuildControl;
-use bdk\Form\Field;
+use bdk\Form\Control;
+use bdk\Form\ControlBuilder;
 
 /**
  * Date
  */
-class TypeDate extends Field
+class TypeDate extends Control
 {
 
     /**
      * {@inheritDoc}
      */
-    public function __construct($props = array(), BuildControl $buildControl = null, Form $form = null)
+    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
     {
         $props = $this->mergeProps(array(
             array(
@@ -26,7 +26,7 @@ class TypeDate extends Field
             ),
             $props,
         ));
-        parent::__construct($props, $buildControl, $form);
+        parent::__construct($props, $controlBuilder, $form);
     }
 
     /**

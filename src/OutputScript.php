@@ -73,8 +73,8 @@ class OutputScript
     /**
      * Buiild isRequired script for given trigger field
      *
-     * @param string          $strJs     php string to be converted to JS
-     * @param \bdk\Form\Field $trigField field instance
+     * @param string            $strJs     php string to be converted to JS
+     * @param \bdk\Form\Control $trigField Control instance
      *
      * @return string javascirpt snippet
      */
@@ -102,8 +102,8 @@ class OutputScript
     /**
      * [buildListen description]
      *
-     * @param \bdk\Form\Field $field    field instance
-     * @param string          $funcName onChange function name
+     * @param \bdk\Form\Control $field    Control instance
+     * @param string            $funcName onChange function name
      *
      * @return string
      */

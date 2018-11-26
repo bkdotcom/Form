@@ -2,7 +2,9 @@
 
 namespace bdk\Form;
 
-interface FieldDefinitionInterface
+use bdk\Form\Control;
+
+interface ControlDefinitionInterface
 {
 
     /**
@@ -15,18 +17,18 @@ interface FieldDefinitionInterface
     /**
      * Get formated value
      *
-     * @param object $field instance
+     * @param Control $control control instance
      *
      * @return string
      */
-    public function getValFormatted($field);
+    public function getValFormatted(Control $control);
 
     /**
      * Validate field
      *
-     * @param object $field instance
+     * @param Control $control control instance
      *
      * @return boolean
      */
-    public function validate($field);
+    public function validate(Control $control);
 }

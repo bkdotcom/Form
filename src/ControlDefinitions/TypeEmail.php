@@ -1,21 +1,21 @@
 <?php
 
-namespace bdk\Form\FieldDefinitions;
+namespace bdk\Form\ControlDefinitions;
 
 use bdk\Form;
-use bdk\Form\BuildControl;
-use bdk\Form\Field;
+use bdk\Form\Control;
+use bdk\Form\ControlBuilder;
 
 /**
  * Email address
  */
-class TypeEmail extends Field
+class TypeEmail extends Control
 {
 
     /**
      * {@inheritDoc}
      */
-    public function __construct($props = array(), BuildControl $buildControl = null, Form $form = null)
+    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
     {
         $props = $this->mergeProps(array(
             array(
@@ -23,7 +23,7 @@ class TypeEmail extends Field
             ),
             $props,
         ));
-        parent::__construct($props, $buildControl, $form);
+        parent::__construct($props, $controlBuilder, $form);
     }
 
     /**
@@ -37,8 +37,7 @@ class TypeEmail extends Field
         if ($this->form && $this->form->status['submitted'] && !$this->props['isValid']) {
             // did not validate -> add hidden field
             $noticeName = $this->attribs['name'].'_notice';
-            $this->debug->warn('buildControl', $this->form->buildControl);
-            $output .= $this->form->buildControl->build(array(
+            $output .= $this->form->controlBuilder->build(array(
                 'type' => 'hidden',
                 'name' => $noticeName,
                 'value' => $this->val(),

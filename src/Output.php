@@ -62,9 +62,6 @@ class Output
         $str = '';
         $cfg = $this->form->cfg;
         $status = $this->form->status;
-        // $printOpts   = $cfg['output'];
-        // $this->debug->log('cfg', $cfg);
-        $this->debug->log('status', $status);
         $strAlerts = \is_callable($cfg['buildAlerts'])
             ? \call_user_func_array($cfg['buildAlerts'], array($this->form))
             : '';
