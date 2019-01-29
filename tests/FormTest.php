@@ -1,7 +1,7 @@
 <?php
 
 use bdk\Form;
-use bdk\Form\Field;
+use bdk\Form\Control;
 use bdk\CssXpath\DOMTestCase;
 
 /**
@@ -18,7 +18,7 @@ class FormTest extends DOMTestCase
 
     public function setUp()
     {
-        Field::clearIdCounts();
+        Control::clearIdCounts();
         $this->setEnv();
     }
 
@@ -36,7 +36,7 @@ class FormTest extends DOMTestCase
     public function testFormConstruct()
     {
         $form = new Form(array(
-            'fields' => array(
+            'controls' => array(
                 'username' => array('required'=>true),
                 'password' => array(
                     'attribs' => array(
@@ -70,11 +70,10 @@ class FormTest extends DOMTestCase
         $this->assertSelectCount('script', 1, $output);
         // $this->assertSame('', $output);
 
-        $this->assertInstanceOf('\bdk\Form\Field', $form->getField('username'));
+        $this->assertInstanceOf('\bdk\Form\Control', $form->getControl('username'));
         $this->assertSame(null, $form->getValue('username'));
-        // fields aren't invalid until the form is submitted
-        $this->assertSame(array(), $form->invalidFields);
-        \bdk\Debug::_warn('key', $form->persist->key);
+        // controls aren't invalid until the form is submitted
+        $this->assertSame(array(), $form->invalidControls);
         $this->setEnv(array(
             '_key_' => $form->persist->key.'_0',
             'password' => 'wrong',
@@ -82,9 +81,9 @@ class FormTest extends DOMTestCase
         $form->process();   // won't PRG because Phpunit has already output
         $this->assertTrue($form->submitted);
         $this->assertSame(array(
-            $form->getField('username'),    // required but empty
-            $form->getField('password'),    // not required, but invalid
-        ), $form->invalidFields);
+            $form->getControl('username'),    // required but empty
+            $form->getControl('password'),    // not required, but invalid
+        ), $form->invalidControls);
         /*
         */
         $this->setEnv(array(
@@ -93,7 +92,7 @@ class FormTest extends DOMTestCase
             'password' => 'swordfish',
         ));
         $form->process();   // won't PRG because Phpunit has already output
-        $this->assertSame(array(), $form->invalidFields);
+        $this->assertSame(array(), $form->invalidControls);
         $this->assertTrue($form->completed);
         $this->assertSame(1, $this->callbackCounts['onComplete']);
         $this->assertSame(3, $this->callbackCounts['pre']);

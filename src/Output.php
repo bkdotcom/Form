@@ -58,13 +58,10 @@ class Output
     public function build()
     {
         $this->debug->groupCollapsed(__METHOD__);
-        $this->debug->groupUncollapse();
         $str = '';
         $cfg = $this->form->cfg;
         $status = $this->form->status;
-        $strAlerts = \is_callable($cfg['buildAlerts'])
-            ? \call_user_func_array($cfg['buildAlerts'], array($this->form))
-            : '';
+        $strAlerts = $this->form->buildAlerts();
         if ($status['error']) {
             $str = $strAlerts
                 .$cfg['messages']['error'];
@@ -74,20 +71,14 @@ class Output
         } elseif ($cfg['buildOutput']) {
             // $this->debug->warn('have buildOutput');
             $this->outputSetup();
-            if (\is_callable($cfg['buildOutput'])) {
-                $str = \call_user_func_array($cfg['buildOutput'], array($this->form));
-            }
-            if (empty($str)) {
-                $this->debug->info('buildOutput callback didn\'t generate anything');
-                $str = $this->buildOutput($this->form);
-            }
-            $str = $strAlerts
-                .$this->buildHiddenFields()
-                .$str;
             $str = $this->form->eventManager->publish(
                 'form.buildOutput',
                 $this->form,
-                array('output'=>$str)
+                array(
+                    'output' => $strAlerts
+                        .$this->buildHiddenControls()
+                        .$this->form->buildOutput(),
+                )
             )->getValue('output');
             if ($cfg['output']['formWrap']) {
                 $attribs = $cfg['attribs'];
@@ -121,37 +112,35 @@ class Output
     }
 
     /**
-     * Default fields builder
-     *
-     * @param Form $form form instance
+     * Default controls builder
      *
      * @return string html
      */
-    public function buildOutput($form)
+    public function buildOutput()
     {
         $this->debug->groupCollapsed(__METHOD__);
         $this->debug->groupUncollapse();
         $str = '';
-        foreach ($form->currentFields as $field) {
-            $str .= $field->build()."\n";
+        foreach ($this->form->currentControls as $control) {
+            $str .= $control->build()."\n";
         }
         $this->debug->groupEnd();
         return $str;
     }
 
     /**
-     * Generate hidden fields not related to inputs
+     * Generate hidden controls not related to inputs
      *
      * @return string
      */
-    private function buildHiddenFields()
+    private function buildHiddenControls()
     {
         $this->debug->groupCollapsed(__METHOD__);
         $cfg = $this->form->cfg;
         $printOpts = &$cfg['output'];
-        $hiddenFields = '';
+        $hiddenControls = '';
         if ($printOpts['inputKey']) {   //  && $cfg['persist_method'] != 'none'
-            $hiddenFields .= '<input type="hidden" name="_key_" value="'.\htmlspecialchars($this->keyValue).'" />';
+            $hiddenControls .= '<input type="hidden" name="_key_" value="'.\htmlspecialchars($this->keyValue).'" />';
         }
         if (\strtolower($cfg['attribs']['method']) == 'get') {
             $this->debug->warn('get method');
@@ -159,21 +148,21 @@ class Output
             // $attribs['action'] = $urlParts['path'];
             if (!empty($urlParts['query'])) {
                 \parse_str($urlParts['query'], $params);
-                $fieldNames = array();
-                foreach ($this->form->currentFields as $field) {
-                    $fieldNames[] = $field->attribs['name'];
+                $controlNames = array();
+                foreach ($this->form->currentControls as $control) {
+                    $controlNames[] = $control->attribs['name'];
                 }
                 foreach ($params as $k => $v) {
-                    if (\in_array($k, $fieldNames)) {
+                    if (\in_array($k, $controlNames)) {
                         continue;
                     }
-                    $hiddenFields .= '<input type="hidden" name="'.\htmlspecialchars($k).'" value="'.\htmlspecialchars($v).'" />'."\n";
+                    $hiddenControls .= '<input type="hidden" name="'.\htmlspecialchars($k).'" value="'.\htmlspecialchars($v).'" />'."\n";
                 }
             }
         }
-        $this->debug->log('hiddenFields', $hiddenFields);
+        $this->debug->log('hiddenControls', $hiddenControls);
         $this->debug->groupEnd();
-        return $hiddenFields;
+        return $hiddenControls;
     }
 
     /**
@@ -189,30 +178,30 @@ class Output
         $this->keyValue = $persist->get('key').'_'.$persist->get('i');
         $this->debug->info('keyValue', $this->keyValue);
         if ($cfg['output']['autofocus']) {
-            $autofocusField = null;
-            $invalidFields = $this->form->getInvalidFields();
-            if ($invalidFields) {
+            $autofocusControl = null;
+            $invalidControls = $this->form->getInvalidControls();
+            if ($invalidControls) {
                 $this->debug->warn('autofocusing invalid');
-                $autofocusField = \current($invalidFields);
+                $autofocusControl = \current($invalidControls);
             } else {
-                foreach ($this->form->currentFields as $k => $field) {
-                    // $this->debug->log('field->attribs', $field->attribs);
-                    $autofocusable = \in_array($field->tagname, array('input','textarea','select'))
-                        && !\in_array($field->attribs['type'], array('button','hidden','reset','submit'));
-                    if (isset($field->attribs['autofocus'])) {
-                        if ($field->attribs['autofocus']) {
+                foreach ($this->form->currentControls as $k => $control) {
+                    // $this->debug->log('control->attribs', $control->attribs);
+                    $autofocusable = \in_array($control->tagname, array('input','textarea','select'))
+                        && !\in_array($control->attribs['type'], array('button','hidden','reset','submit'));
+                    if (isset($control->attribs['autofocus'])) {
+                        if ($control->attribs['autofocus']) {
                             $this->debug->log('autofocus attrib explicitly set for', $k);
-                            $autofocusField = $field;
+                            $autofocusControl = $control;
                             break;
                         }
-                    } elseif (!$autofocusField && $autofocusable) {
-                        $autofocusField = $field;
-                        // don't break... may find a field that's explicitly autofocused
+                    } elseif (!$autofocusControl && $autofocusable) {
+                        $autofocusControl = $control;
+                        // don't break... may find a control that's explicitly autofocused
                     }
                 }
             }
-            if ($autofocusField) {
-                $autofocusField->focus();
+            if ($autofocusControl) {
+                $autofocusControl->focus();
             }
         }
         $this->debug->groupEnd();

@@ -24,7 +24,7 @@ interface ControlDefinitionInterface
     public function getValFormatted(Control $control);
 
     /**
-     * Validate field
+     * Validate control
      *
      * @param Control $control control instance
      *

@@ -2,6 +2,8 @@
 
 namespace bdk\Form;
 
+use bdk\Form\Control;
+
 /**
  * Generate javascript to enforce/update requirement dependencies
  */
@@ -27,7 +29,7 @@ class OutputScript
 
     /**
      * Build form form-specific javascript
-     * Script updates require attribute if req is dependant on other fields
+     * Script updates require attribute if req is dependant on other controls
      *
      * @return string
      */
@@ -44,10 +46,10 @@ class OutputScript
             $strFunc = $this->buildOnChangeFunc($trig);
             $strFunctions .= $strFunc."\n";
             $strOnload .= "\t".$trig['funcName']."();\n";
-            $trigFields = $this->getFieldsWithName($trigName);
-            foreach ($trigFields as $field) {
-                // Listen to this field && call func when changed
-                $strListen .= $this->buildListen($field, $trig['funcName'])."\n";
+            $trigControls = $this->getControlsWithName($trigName);
+            foreach ($trigControls as $control) {
+                // Listen to this control && call func when changed
+                $strListen .= $this->buildListen($control, $trig['funcName'])."\n";
             }
         }
         if (!empty($strFunctions) || !empty($strListen)) {
@@ -71,16 +73,16 @@ class OutputScript
     }
 
     /**
-     * Buiild isRequired script for given trigger field
+     * Buiild isRequired script for given trigger control
      *
-     * @param string            $strJs     php string to be converted to JS
-     * @param \bdk\Form\Control $trigField Control instance
+     * @param string  $strJs       php string to be converted to JS
+     * @param Control $trigControl Control instance
      *
      * @return string javascirpt snippet
      */
-    private function buildIsReq($strJs, $trigField)
+    private function buildIsReq($strJs, Control $trigControl)
     {
-        $trigName = $trigField->attribs['name'];
+        $trigName = $trigControl->attribs['name'];
         $strJs = \str_replace('{{'.$trigName.'}}', 'val', $strJs);
         $strJs = \preg_replace_callback($this->regExOther, array($this, 'replaceOther'), $strJs);
         $strJs = \preg_replace_callback($this->regExThis, array($this, 'replaceCurrent'), $strJs);
@@ -92,7 +94,7 @@ class OutputScript
             $strJs
         );
         $strJs = \str_replace('is_numeric', 'parseFloat', $strJs);
-        if ($trigField->returnArray) {
+        if ($trigControl->returnArray) {
             // not checking for a specific value...
             $strJs = \preg_replace('/(^|[\s!])val(\s|$)/', '$1val.length$2', $strJs);
         }
@@ -102,31 +104,31 @@ class OutputScript
     /**
      * [buildListen description]
      *
-     * @param \bdk\Form\Control $field    Control instance
-     * @param string            $funcName onChange function name
+     * @param Control $control    Control instance
+     * @param string  $funcName onChange function name
      *
      * @return string
      */
-    private function buildListen($field, $funcName)
+    private function buildListen(Control $control, $funcName)
     {
         $strJs = '';
-        $fieldId = $field->id;
-        if (\in_array($field->attribs['type'], array('checkbox','radio'))) {
-            foreach (\array_keys($field->props['options']) as $k) {
+        $controlId = $control->id;
+        if (\in_array($control->attribs['type'], array('checkbox','radio'))) {
+            foreach (\array_keys($control->props['options']) as $k) {
                 // just capture click (not change) because IE 7 & below doesn't fire change until blur
-                $strJs = '$("#'.$fieldId.'_'.$k.'").on("click", function(){ '
-                    .'document.getElementById("'.$fieldId.'_'.$k.'").blur();'
+                $strJs = '$("#'.$controlId.'_'.$k.'").on("click", function(){ '
+                    .'document.getElementById("'.$controlId.'_'.$k.'").blur();'
                     .$funcName.'();'
                 .'});';
             }
         } else {
             $event = 'change';
-            if ($field->attribs['type'] == 'submit') {
+            if ($control->attribs['type'] == 'submit') {
                 $event = 'click';
-            } elseif ($field->attribs['type'] == 'text') {
+            } elseif ($control->attribs['type'] == 'text') {
                 $event = 'keyup';
             }
-            $strJs .= '$("#'.$fieldId.'").on("'.$event.'", '.$funcName.');';
+            $strJs .= '$("#'.$controlId.'").on("'.$event.'", '.$funcName.');';
         }
         return $strJs;
     }
@@ -153,50 +155,50 @@ class OutputScript
     }
 
     /**
-     * Get all form fields having given name
+     * Get all form controls having given name
      *
-     * @param string $name field name
+     * @param string $name control name
      *
      * @return array
      */
-    private function getFieldsWithName($name)
+    private function getControlsWithName($name)
     {
-        $trigFields = array();
-        $fields = &$this->form->currentFields;
-        if (isset($fields[$name])) {
-            $trigFields[] = $fields[$name];
+        $trigControls = array();
+        $controls = &$this->form->currentControls;
+        if (isset($controls[$name])) {
+            $trigControls[] = $controls[$name];
         } else {
-            foreach ($fields as $f) {
-                if ($f->attribs['name'] == $name) {
-                    $trigFields[] = $f;
+            foreach ($controls as $control) {
+                if ($control->attribs['name'] == $name) {
+                    $trigControls[] = $control;
                 }
             }
         }
-        return $trigFields;
+        return $trigControls;
     }
 
     /**
      * [getSelector description]
      *
-     * @param string|object $field field name or field obj
+     * @param string|Control $control control name or control instance
      *
      * @return string css selector
      */
-    private function getSelector($field)
+    private function getSelector($control)
     {
-        if (\is_string($field)) {
-            if (isset($this->trigs[$field]['selector'])) {
-                return $this->trigs[$field]['selector'];
+        if (\is_string($control)) {
+            if (isset($this->trigs[$control]['selector'])) {
+                return $this->trigs[$control]['selector'];
             }
-            $fields = $this->getFieldsWithName($field);
-            $field = $fields[0];
+            $controls = $this->getControlsWithName($control);
+            $control = $controls[0];
         }
-        if (\in_array($field->attribs['type'], array('checkbox','radio','submit'))) {
+        if (\in_array($control->attribs['type'], array('checkbox','radio','submit'))) {
             $formId = $this->form->cfg['attribs']['id'];
-            $selector = '#'.$formId.' input[name=\"'.$field->attribs['name'].'\"]';
+            $selector = '#'.$formId.' input[name=\"'.$control->attribs['name'].'\"]';
         } else {
-            $fieldId = $field->id;
-            $selector = '#'.$fieldId;
+            $controlId = $control->id;
+            $selector = '#'.$controlId;
         }
         return $selector;
     }
@@ -210,13 +212,13 @@ class OutputScript
     {
         $this->debug->groupCollapsed(__METHOD__);
         $formId = $this->form->cfg['attribs']['id'];
-        $fields = &$this->form->currentFields;
+        $controls = &$this->form->currentControls;
         $trigs = array();
-        foreach ($fields as $field) {
-            if (\is_string($field->attribs['required'])) {
-                $this->debug->info($field->attribs['name'].' is required when', $field->attribs['required']);
-                $fieldName = $field->attribs['name'];
-                $str = $field->attribs['required'];
+        foreach ($controls as $control) {
+            if (\is_string($control->attribs['required'])) {
+                $this->debug->info($control->attribs['name'].' is required when', $control->attribs['required']);
+                $controlName = $control->attribs['name'];
+                $str = $control->attribs['required'];
                 \preg_match_all($this->regExThis, $str, $matches);
                 $trigNames = \array_unique($matches[1]);
                 /*
@@ -225,19 +227,19 @@ class OutputScript
                 */
                 foreach ($trigNames as $trigName) {
                     $this->debug->log('trigName', $trigName);
-                    $trigFields = $this->getFieldsWithName($trigName);
-                    $trigField = $trigFields[0];
+                    $trigControls = $this->getControlsWithName($trigName);
+                    $trigControl = $trigControls[0];
                     if (!isset($trigs[$trigName])) {
                         $trigs[$trigName] = array(
-                            'type' => $trigField->attribs['type'],
-                            'selector' => $this->getSelector($trigField),
+                            'type' => $trigControl->attribs['type'],
+                            'selector' => $this->getSelector($trigControl),
                             'funcName' => \preg_replace('/\W+/', '_', 'changed_'.$formId.'_'.$trigName),
                             'check' => array(),
                         );
                     }
-                    $trigs[$trigName]['check'][$fieldName] = array(
-                        'selector' => $this->getSelector($field),
-                        'isReq' => $this->buildIsReq($str, $trigField),
+                    $trigs[$trigName]['check'][$controlName] = array(
+                        'selector' => $this->getSelector($control),
+                        'isReq' => $this->buildIsReq($str, $trigControl),
                     );
                 }
             }
@@ -248,7 +250,7 @@ class OutputScript
     }
 
     /**
-     * replace field tokens occuring in current form page
+     * replace control tokens occuring in current form page
      *
      * @param array $matches matched strings
      *
@@ -256,12 +258,12 @@ class OutputScript
      */
     private function replaceCurrent($matches)
     {
-        $fieldName = $matches[1];
-        return 'BDKForm.getValue("'.$this->getSelector($fieldName).'")';
+        $controlName = $matches[1];
+        return 'BDKForm.getValue("'.$this->getSelector($controlName).'")';
     }
 
     /**
-     * replace field tokens occring in non-current form page
+     * replace control tokens occring in non-current form page
      *
      * @param array $matches matched strings
      *

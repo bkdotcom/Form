@@ -2,9 +2,7 @@
 
 namespace bdk\Form\ControlDefinitions;
 
-use bdk\Form;
 use bdk\Form\Control;
-use bdk\Form\ControlBuilder;
 
 /**
  * Email address
@@ -13,41 +11,27 @@ class TypeEmail extends Control
 {
 
     /**
-     * {@inheritDoc}
-     */
-    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
-    {
-        $props = $this->mergeProps(array(
-            array(
-                'invalidReason' => 'This does not appear to be a valid email address',
-            ),
-            $props,
-        ));
-        parent::__construct($props, $controlBuilder, $form);
-    }
-
-    /**
-     * Build field control
+     * Build control control
      *
      * @return string
      */
     public function doBuild()
     {
         $output = parent::build();
-        if ($this->form && $this->form->status['submitted'] && !$this->props['isValid']) {
-            // did not validate -> add hidden field
-            $noticeName = $this->attribs['name'].'_notice';
-            $output .= $this->form->controlBuilder->build(array(
+        if (!$this->props['isValid']) {
+            // did not validate -> add hidden control
+            $hiddenControl = $this->controlFactory->build(array(
                 'type' => 'hidden',
-                'name' => $noticeName,
+                'name' => $this->attribs['name'].'_notice',
                 'value' => $this->val(),
-            ));
+            ))->build();
+            $output = \preg_replace('#(<input[^>]+>)#', '$1'."\n".$hiddenControl, $output);
         }
         return $output;
     }
 
     /**
-     * Validate field
+     * Validate control
      *
      * @return boolean
      */
@@ -96,12 +80,19 @@ class TypeEmail extends Control
     /**
      * Get formated value
      *
-     * @param object $field instance
+     * @param Control $control instance
      *
      * @return string
      */
-    public function getValFormatted($field)
+    public function getValFormatted(Control $control)
     {
-        return $field->valRaw();
+        return $control->valRaw();
+    }
+
+    protected function getDefaultProps($type)
+    {
+        return array(
+            'invalidReason' => 'This does not appear to be a valid email address',
+        );
     }
 }

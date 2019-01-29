@@ -67,7 +67,7 @@ class Complete
         $dbWas = $this->debug->log('collect', false);
         $pages = $this->form->persist->get('pages');
         foreach ($pages as $i => $page) {
-            $this->form->setCurrentFields($i);
+            $this->form->setCurrentControls($i);
             if (\count($pages) > 1) {
                 $emailBody .= '*** '.\str_replace('_', ' ', $page['name']).' ***'."\n\n";
             }
@@ -98,14 +98,14 @@ class Complete
         $string .= "\n";
         $typesSkip = array('button','image','reset','submit','newPage');
         $namesMeta = array('screen_width','screen_height','screen_colorDepth');
-        foreach ($this->form->currentFields as $field) {
-            $props = $field->props;
+        foreach ($this->form->currentControls as $control) {
+            $props = $control->props;
             $name = $props['attribs']['name'];
             $type = $props['attribs']['type'];
-            $label = \is_int($name) && !empty($field['label'])
-                ? $field['label']
+            $label = \is_int($name) && !empty($control['label'])
+                ? $control['label']
                 : \ucwords(\strtr($name, '_', ' '));
-            $value = $field->val();
+            $value = $control->val();
             if (\in_array($type, $typesSkip)) {
                 continue;
             } elseif (\in_array($name, $namesMeta)) {
@@ -186,19 +186,19 @@ class Complete
         $typesSkip = array('button','image','reset','submit');
         $pages = $this->logGetAllPages();
         foreach (\array_keys($pages) as $i) {
-            $this->setCurrentFields($i);
-            foreach ($this->form->currentFields as $field) {
-                $props = $field->props;
+            $this->setCurrentControls($i);
+            foreach ($this->form->currentControls as $control) {
+                $props = $control->props;
                 $type = $props['attribs']['type'];
                 $name = $props['attribs']['name'];
                 if (\in_array($type, $typesSkip)) {
-                    continue;           // not interested in these types o fields
+                    continue;           // not interested in these types o controls
                 }
                 $label = (\is_int($name) && !empty($props['label']))
                     ? $props['label']
                     : \ucwords(\strtr($name, '_', ' '));
-                $value = $field->val();
-                // do not use $field['return_array']... we're wanting a column for every possible value
+                $value = $control->val();
+                // do not use $control['return_array']... we're wanting a column for every possible value
                 if (\in_array($type, array('checkbox','select','radio'))) {
                     if (\is_string($value)) {
                         $value = array($value);

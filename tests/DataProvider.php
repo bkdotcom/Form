@@ -1,21 +1,14 @@
 <?php
 
-use bdk\Form\BuildControl;
-use bdk\Form\FieldFactory;
+use bdk\Form\ControlBuilder;
+use bdk\Form\ControlFactory;
 
 class DataProvider
 {
 
     public static function buildProvider()
     {
-        $buildControl = new BuildControl(array(
-            'attribs' => array(
-                'class' => 'input-sm',
-            ),
-            'idPrefix' => 'unittest',
-        ));
-        $fieldFactory = new FieldFactory(
-            new BuildControl(),
+        $controlFactory = new ControlFactory(
             null,
             array(
                 'attribs' => array(
@@ -25,68 +18,23 @@ class DataProvider
             )
         );
         return array(
-            // button
-            array(
-                $buildControl,
-                $fieldFactory,
-                array(
-                    'idPrefix' => 'prefix',
-                    'type' => 'button',
-                    'name' => 'testBtn',
-                    'label' => 'click me',
-                ),
-                '<div class="form-group" id="prefix_testBtn_container">
-                <div class="controls">
-                <button class="btn btn-default" id="prefix_testBtn" name="testBtn" type="button">click me</button>
-                </div>
-                </div>',
-                '<button class="btn btn-default" id="prefix_testBtn_2" name="testBtn" type="button">click me</button>',
-            ),
-            // reset
-            array(
-                $buildControl,
-                $fieldFactory,
-                array(
-                    'type' => 'reset',
-                    'name' => 'testBtn',
-                    'label' => 'click me',
-                ),
-                '<div class="form-group" id="unittest_testBtn_container">
-                <div class="controls">
-                <button class="btn btn-default" id="unittest_testBtn" name="testBtn" type="reset">click me</button>
-                </div>
-                </div>',
-                '<button class="btn btn-default" id="unittest_testBtn_2" name="testBtn" type="reset">click me</button>',
-            ),
-            // submit
-            array(
-                $buildControl,
-                $fieldFactory,
-                array(
-                    'type' => 'submit',
-                    'name' => 'testBtn',
-                ),
-                '<div class="form-group" id="unittest_testBtn_3_container">
-                <div class="controls">
-                <button class="btn btn-default" id="unittest_testBtn_3" name="testBtn" type="submit">Submit</button>
-                </div>
-                </div>',
-                '<button class="btn btn-default" id="unittest_testBtn_4" name="testBtn" type="submit">Submit</button>',
-            ),
             // date
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'date',
                     'name' => 'dob',
                     'label' => 'birthday',
                     'helpBlock' => 'The date of your birth',
+                    'addonAfter' => '<i class="glyphicon glyphicon-calendar"></i>'
                 ),
                 '<div class="form-group" id="unittest_dob_container">
                 <label class="control-label" for="unittest_dob">birthday</label>
                 <div class="controls">
+                <div class="input-group">
                 <input aria-describedby="unittest_dob_help_block" class="form-control hide-spinbtns input-sm" id="unittest_dob" name="dob" placeholder="yyyy-mm-dd" type="date" />
+                <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                </div>
                 <span class="help-block" id="unittest_dob_help_block">The date of your birth</span>
                 </div>
                 </div>',
@@ -94,8 +42,7 @@ class DataProvider
             ),
             // datetime-local
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'datetime-local',
                     'name' => 'starttime',
@@ -111,8 +58,7 @@ class DataProvider
             ),
             // email
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'email',
                     'name' => 'email',
@@ -131,10 +77,36 @@ class DataProvider
                 </div>',
                 '<input class="form-control input-sm" id="unittest_email_2" name="email" required="required" type="email" x-moz-errormessage="This does not appear to be a valid email address" />',
             ),
+
+            // email
+            array(
+                $controlFactory,
+                array(
+                    'type' => 'email',
+                    'name' => 'email_invalid',
+                    'label' => 'email (invalid)',
+                    'required' => true,
+                    'addonAfter' => '@',
+                    'isValid' => false,
+                ),
+                '<div class="form-group has-error required" id="unittest_email_invalid_container">
+                <label class="control-label" for="unittest_email_invalid">email (invalid)</label>
+                <div class="controls">
+                <div class="input-group">
+                <input aria-describedby="unittest_email_invalid_help_block" class="form-control input-sm" id="unittest_email_invalid" name="email_invalid" required="required" type="email" x-moz-errormessage="This does not appear to be a valid email address" />
+                <input id="unittest_email_invalid_notice" name="email_invalid_notice" type="hidden" />
+                <span class="input-group-addon">@</span>
+                </div>
+                <span class="help-block" id="unittest_email_invalid_help_block">This does not appear to be a valid email address</span>
+                </div>
+                </div>',
+                '<input class="form-control input-sm" id="unittest_email_invalid_2" name="email_invalid" required="required" type="email" x-moz-errormessage="This does not appear to be a valid email address" />
+                <input id="unittest_email_invalid_notice_2" name="email_invalid_notice" type="hidden" />',
+            ),
+
             // file
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'file',
                     'name' => 'imageupload',
@@ -150,8 +122,7 @@ class DataProvider
             ),
             // hidden
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'hidden',
                     'name' => 'secret',
@@ -162,49 +133,56 @@ class DataProvider
             ),
             // html
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'html',
-                    'value' => '<p>HTML</p>',
+                    'value' => '<div class="col-sm-6">HTML</div>',
                 ),
-                '<p>HTML</p>',
-                '<p>HTML</p>',
+                '<div class="col-sm-6">HTML</div>',
+                '<div class="col-sm-6">HTML</div>',
             ),
             // number
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'number',
                     'name' => 'favoriteNumber',
+                    'label' => 'Number',
+                    'attribs' => array(
+                        'min' => 1,
+                        'max' => 10,
+                    ),
                 ),
                 '<div class="form-group" id="unittest_favoriteNumber_container">
+                <label class="control-label" for="unittest_favoriteNumber">Number</label>
                 <div class="controls">
-                <input class="form-control input-sm" id="unittest_favoriteNumber" name="favoriteNumber" step="any" type="number" />
+                <input class="form-control input-sm" id="unittest_favoriteNumber" max="10" min="1" name="favoriteNumber" step="any" type="number" />
                 </div>
                 </div>',
-                '<input class="form-control input-sm" id="unittest_favoriteNumber_2" name="favoriteNumber" step="any" type="number" />',
+                '<input class="form-control input-sm" id="unittest_favoriteNumber_2" max="10" min="1" name="favoriteNumber" step="any" type="number" />',
             ),
             // password
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'password',
                     'name' => 'password',
+                    'label' => 'Password',
+                    'attribs' => array(
+                        'data-lpignore' => true,    // no LastPass icon
+                    ),
                 ),
                 '<div class="form-group" id="unittest_password_container">
+                <label class="control-label" for="unittest_password">Password</label>
                 <div class="controls">
-                <input autocapitalize="none" autocomplete="off" autocorrect="off" class="form-control input-sm" id="unittest_password" name="password" type="password" />
+                <input autocapitalize="none" autocomplete="off" autocorrect="off" class="form-control input-sm" data-lpignore="true" id="unittest_password" name="password" type="password" />
                 </div>
                 </div>',
-                '<input autocapitalize="none" autocomplete="off" autocorrect="off" class="form-control input-sm" id="unittest_password_2" name="password" type="password" />',
+                '<input autocapitalize="none" autocomplete="off" autocorrect="off" class="form-control input-sm" data-lpignore="true" id="unittest_password_2" name="password" type="password" />',
             ),
             // range
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'range',
                     'name' => 'range',
@@ -218,40 +196,40 @@ class DataProvider
                 </div>',
                 '<input id="unittest_range_2" max="100" min="0" name="range" step="1" type="range" />',
             ),
-            // search
             array(
-                $buildControl,
-                $fieldFactory,
+                // search
+                $controlFactory,
                 array(
                     'label' => 'Search',
                     'type' => 'search',
-                    'addonAfter' => '🔍',
+                    // 'addonAfter' => '🔍',
+                    'addonAfter' => '<i class="glyphicon glyphicon-search"></i>'
                 ),
                 '<div class="form-group">
                 <label class="control-label">Search</label>
                 <div class="controls">
                 <div class="input-group">
                 <input class="form-control input-sm" placeholder="search" type="search" />
-                <span class="input-group-addon">🔍</span>
+                <span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>
                 </div>
                 </div>
                 </div>',
                 '<input class="form-control input-sm" placeholder="search" type="search" />',
             ),
-            // select
             array(
-                $buildControl,
-                $fieldFactory,
+                // select (option values provided)
+                $controlFactory,
                 array(
                     'type' => 'select',
                     'name' => 'things',
                     'options' => array('Hammer', 'Banana', 'Pillow', 'Desk', 'Stick'),
-                    'label' => 'Select a thing'
+                    'label' => 'Select a thing (not required)'
                 ),
                 '<div class="form-group" id="unittest_things_container">
-                <label class="control-label" for="unittest_things">Select a thing</label>
+                <label class="control-label" for="unittest_things">Select a thing (not required)</label>
                 <div class="controls">
                 <select class="form-control input-sm" id="unittest_things" name="things">
+                <option selected="selected" value="">Select</option>
                 <option value="Hammer">Hammer</option>
                 <option value="Banana">Banana</option>
                 <option value="Pillow">Pillow</option>
@@ -261,6 +239,7 @@ class DataProvider
                 </div>
                 </div>',
                 '<select class="form-control input-sm" id="unittest_things_2" name="things">
+                <option selected="selected" value="">Select</option>
                 <option value="Hammer">Hammer</option>
                 <option value="Banana">Banana</option>
                 <option value="Pillow">Pillow</option>
@@ -268,10 +247,9 @@ class DataProvider
                 <option value="Stick">Stick</option>
                 </select>',
             ),
-            // select (with groups)
             array(
-                $buildControl,
-                $fieldFactory,
+                // select (with groups)
+                $controlFactory,
                 array(
                     'name' => 's2',
                     'label' => 'I have opt groups!',
@@ -334,16 +312,13 @@ class DataProvider
             ),
             // select (multi)
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'name' => 's3',
                     'label' => 'Select multiple things!',
                     'type' => 'select',
                     'required' => true,
-                    'attribs' => array(
-                        'multiple' => true,
-                    ),
+                    'multiple' => true,
                     'options' => array('gps', 'smartphone', 'knick knacks'),
                 ),
                 '<div class="form-group required" id="unittest_s3_container">
@@ -362,10 +337,10 @@ class DataProvider
                 <option value="knick knacks">knick knacks</option>
                 </select>',
             ),
+
             // static
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'static',
                     'name' => 'static_test',
@@ -382,25 +357,44 @@ class DataProvider
             ),
             // tel
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'type' => 'tel',
                     'name' => 'homePhone',
                     'label' => 'Home Phone',
+                    'addonAfter' => '<i class="glyphicon glyphicon-earphone"></i>'
                 ),
                 '<div class="form-group" id="unittest_homePhone_container">
                 <label class="control-label" for="unittest_homePhone">Home Phone</label>
                 <div class="controls">
+                <div class="input-group">
                 <input class="form-control input-sm" id="unittest_homePhone" name="homePhone" pattern="\(?[2-9]\d{2}[)-.]?[\s]?\d{3}[ -.]?\d{4}" placeholder="(nnn) nnn-nnnn" title="Phone: (nnn) nnn-nnnn" type="tel" x-moz-errormessage="Must be formatted (nnn) nnn-nnnn" />
+                <span class="input-group-addon"><i class="glyphicon glyphicon-earphone"></i></span>
+                </div>
                 </div>
                 </div>',
                 '<input class="form-control input-sm" id="unittest_homePhone_2" name="homePhone" pattern="\(?[2-9]\d{2}[)-.]?[\s]?\d{3}[ -.]?\d{4}" placeholder="(nnn) nnn-nnnn" title="Phone: (nnn) nnn-nnnn" type="tel" x-moz-errormessage="Must be formatted (nnn) nnn-nnnn" />',
             ),
-            // textarea
+
+            // text (default)
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
+                array(
+                    'name' => 'name',
+                    'label' => 'Super Default',
+                ),
+                '<div class="form-group" id="unittest_name_container">
+                <label class="control-label" for="unittest_name">Super Default</label>
+                <div class="controls">
+                <input class="form-control input-sm" id="unittest_name" name="name" type="text" />
+                </div>
+                </div>',
+                '<input class="form-control input-sm" id="unittest_name_2" name="name" type="text" />',
+            ),
+
+            array(
+                // textarea
+                $controlFactory,
                 array(
                     'type' => 'textarea',
                     'name' => 'essay',
@@ -414,19 +408,22 @@ class DataProvider
                 </div>',
                 '<textarea class="form-control input-sm" id="unittest_essay_2" name="essay" rows="4"></textarea>',
             ),
-            // url
             array(
-                $buildControl,
-                $fieldFactory,
+                // url
+                $controlFactory,
                 array(
                     'type' => 'url',
                     'name' => 'homepage',
                     'label' => 'Home Page',
+                    'addonAfter' => '<i class="glyphicon glyphicon-globe"></i>',
                 ),
                 '<div class="form-group" id="unittest_homepage_container">
                 <label class="control-label" for="unittest_homepage">Home Page</label>
                 <div class="controls">
+                <div class="input-group">
                 <input class="form-control input-sm" id="unittest_homepage" name="homepage" pattern="https?://([-\w\.]+)+(:\d+)?(/([-\w/\.]*(\?\S+)?)?)?" placeholder="http://" type="url" />
+                <span class="input-group-addon"><i class="glyphicon glyphicon-globe"></i></span>
+                </div>
                 </div>
                 </div>',
                 '<input class="form-control input-sm" id="unittest_homepage_2" name="homepage" pattern="https?://([-\w\.]+)+(:\d+)?(/([-\w/\.]*(\?\S+)?)?)?" placeholder="http://" type="url" />',
@@ -435,27 +432,29 @@ class DataProvider
             /*
                 Definitions
             */
-            // creditcard
             array(
-                $buildControl,
-                $fieldFactory,
+                // creditcard
+                $controlFactory,
                 array(
                     'name' => 'ccnum',
                     'label' => 'Credit Card',
                     'definition' => 'creditcard',
+                    'addonAfter' => '<i class="glyphicon glyphicon-credit-card"></i>'
                 ),
                 '<div class="form-group" id="unittest_ccnum_container">
                 <label class="control-label" for="unittest_ccnum">Credit Card</label>
                 <div class="controls">
+                <div class="input-group">
                 <input autocomplete="off" class="form-control input-sm" data-lpignore="true" id="unittest_ccnum" maxlength="19" name="ccnum" pattern="((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})" placeholder="nnnn-nnnn-nnnn-nnnn" size="18" title="nnnn-nnnn-nnnn-nnnn" type="text" x-moz-errormessage="Must be a valid credit card #" />
+                <span class="input-group-addon"><i class="glyphicon glyphicon-credit-card"></i></span>
+                </div>
                 </div>
                 </div>',
                 '<input autocomplete="off" class="form-control input-sm" data-lpignore="true" id="unittest_ccnum_2" maxlength="19" name="ccnum" pattern="((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})" placeholder="nnnn-nnnn-nnnn-nnnn" size="18" title="nnnn-nnnn-nnnn-nnnn" type="text" x-moz-errormessage="Must be a valid credit card #" />',
             ),
             // dollar
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'name' => 'donation',
                     'label' => 'Donation',
@@ -474,8 +473,7 @@ class DataProvider
             ),
             // postalcode
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'name' => 'postalCode',
                     'label' => 'Zipcode',
@@ -491,8 +489,7 @@ class DataProvider
             ),
             // ssn
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'name' => 'ssn',
                     'label' => 'SSN',
@@ -506,31 +503,53 @@ class DataProvider
                 </div>',
                 '<input autocomplete="off" class="form-control input-sm" id="unittest_ssn_2" name="ssn" pattern="\d{3}[\. -]?\d{2}[\. -]?\d{4}" placeholder="nnn-nn-nnnn" size="11" title="SSN: nnn-nnnn" type="text" x-moz-errormessage="Must be formatted nnn-nn-nnnn" />',
             ),
-        );
-    }
 
-    public static function buildCheckboxRadioProvider()
-    {
-        $buildControl = new BuildControl(array(
-            'attribs' => array(
-                'class' => 'input-sm',
-            ),
-            'idPrefix' => 'unittest',
-        ));
-        $fieldFactory = new FieldFactory(
-            new BuildControl(),
-            null,
+            // button
             array(
-                'attribs' => array(
-                    'class' => 'input-sm',
+                $controlFactory,
+                array(
+                    'idPrefix' => 'prefix',
+                    'type' => 'button',
+                    'name' => 'testBtn',
+                    'label' => '<i class="glyphicon glyphicon glyphicon-ok"></i> click me',
+                    'attribs' => array('class'=>'btn-primary'),
+                    'tagOnly' => true,
                 ),
-                'idPrefix' => 'unittest'
-            )
-        );
-        return array(
+                '<button class="btn btn-default btn-primary" id="prefix_testBtn" name="testBtn" type="button"><i class="glyphicon glyphicon glyphicon-ok"></i> click me</button>',
+                '<button class="btn btn-default btn-primary" id="prefix_testBtn_2" name="testBtn" type="button"><i class="glyphicon glyphicon glyphicon-ok"></i> click me</button>',
+            ),
+            // reset
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
+                array(
+                    'type' => 'reset',
+                    'name' => 'testBtn',
+                ),
+                '<div class="form-group" id="unittest_testBtn_container">
+                <div class="controls">
+                <button class="btn btn-default" id="unittest_testBtn" name="testBtn" type="reset">Reset</button>
+                </div>
+                </div>',
+                '<button class="btn btn-default" id="unittest_testBtn_2" name="testBtn" type="reset">Reset</button>',
+            ),
+            array(
+                // submit
+                $controlFactory,
+                array(
+                    'type' => 'submit',
+                    'name' => 'testBtn',
+                ),
+                '<div class="form-group" id="unittest_testBtn_3_container">
+                <div class="controls">
+                <button class="btn btn-default" id="unittest_testBtn_3" name="testBtn" type="submit">Submit</button>
+                </div>
+                </div>',
+                '<button class="btn btn-default" id="unittest_testBtn_4" name="testBtn" type="submit">Submit</button>',
+            ),
+
+            array(
+                // checkbox
+                $controlFactory,
                 array(
                     'name' => 'cb1',
                     'type' => 'checkbox',
@@ -562,19 +581,18 @@ class DataProvider
                 ),
             ),
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'name' => 'cb2',
                     'type' => 'checkbox',
-                    'label' => 'Single Checkbox - value passed (marshmallow)',
+                    'label' => 'Single Checkbox - value specified, no options',
                     'value' => 'marshmallow',
                     'disabled' => true,
                     'checked' => true,
                 ),
                 '<div class="form-group" id="unittest_cb2_container">
                 <div class="controls">
-                <div class="checkbox disabled"><label><input checked="checked" disabled="disabled" id="unittest_cb2" name="cb2" type="checkbox" value="marshmallow" />Single Checkbox - value passed (marshmallow)</label></div>
+                <div class="checkbox disabled"><label><input checked="checked" disabled="disabled" id="unittest_cb2" name="cb2" type="checkbox" value="marshmallow" />Single Checkbox - value specified, no options</label></div>
                 </div>
                 </div>',
                 array(
@@ -591,16 +609,51 @@ class DataProvider
                                     'disabled',
                                 ),
                             ),
-                            'label' => 'Single Checkbox - value passed (marshmallow)',
+                            'label' => 'Single Checkbox - value specified, no options',
                             'input' => '<input checked="checked" disabled="disabled" id="unittest_cb2_2" name="cb2" type="checkbox" value="marshmallow" />',
                         ),
                     ),
                     'useFieldset' => false,
                 ),
             ),
+
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
+                array(
+                    'name' => 'cb4',
+                    'type' => 'checkbox',
+                    'options' => array(
+                        array('value'=>'dingus', 'label'=>'Checkbox Group w/o group label')
+                    ),
+                ),
+                '<div class="form-group" id="unittest_cb4_container">
+                <div class="controls">
+                <div class="checkbox"><label><input id="unittest_cb4" name="cb4" type="checkbox" value="dingus" />Checkbox Group w/o group label</label></div>
+                </div>
+                </div>',
+                array(
+                    'label' => null,
+                    'options' => array(
+                        array(
+                            'attribs' => array(
+                                'id' => 'unittest_cb4_2', 'name' => 'cb4', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'value' => 'dingus',
+                            ),
+                            'attribsLabel' => array(),
+                            'attribsPair' => array(
+                                'class' => array(
+                                    'checkbox',
+                                ),
+                            ),
+                            'label' => 'Checkbox Group w/o group label',
+                            'input' => '<input id="unittest_cb4_2" name="cb4" type="checkbox" value="dingus" />',
+                        ),
+                    ),
+                    'useFieldset' => false,
+                ),
+            ),
+
+            array(
+                $controlFactory,
                 array(
                     'name' => 'cb3',
                     'type' => 'checkbox',
@@ -636,44 +689,9 @@ class DataProvider
                     'useFieldset' => true,
                 ),
             ),
+
             array(
-                $buildControl,
-                $fieldFactory,
-                array(
-                    'name' => 'cb4',
-                    'type' => 'checkbox',
-                    'options' => array(
-                        array('value'=>'dingus', 'label'=>'Checkbox Group w/o group label')
-                    ),
-                ),
-                '<div class="form-group" id="unittest_cb4_container">
-                <div class="controls">
-                <div class="checkbox"><label><input id="unittest_cb4" name="cb4" type="checkbox" value="dingus" />Checkbox Group w/o group label</label></div>
-                </div>
-                </div>',
-                array(
-                    'label' => null,
-                    'options' => array(
-                        array(
-                            'attribs' => array(
-                                'id' => 'unittest_cb4_2', 'name' => 'cb4', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'value' => 'dingus',
-                            ),
-                            'attribsLabel' => array(),
-                            'attribsPair' => array(
-                                'class' => array(
-                                    'checkbox',
-                                ),
-                            ),
-                            'label' => 'Checkbox Group w/o group label',
-                            'input' => '<input id="unittest_cb4_2" name="cb4" type="checkbox" value="dingus" />',
-                        ),
-                    ),
-                    'useFieldset' => false,
-                ),
-            ),
-            array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
                     'attribs' => array(
                         'name' => 'things1',
@@ -701,7 +719,7 @@ class DataProvider
                         array(
                             'attribs' => array(
                                 'id' => 'unittest_things1_2_1', 'name' => 'things1[]', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'value' => 'Burrito',
-                                ),
+                            ),
                             'attribsLabel' => array(),
                             'attribsPair' => array(
                                 'class' => array(
@@ -742,98 +760,169 @@ class DataProvider
                     'useFieldset' => true,
                 ),
             ),
-            // radio
+
             array(
-                $buildControl,
-                $fieldFactory,
+                $controlFactory,
                 array(
-                    'type' => 'radio',
+                    'type' => 'checkbox',
                     'name' => 'things',
+                    'value' => array('Hammer', 'Stick'),
                     'options' => array('Hammer', 'Banana', 'Pillow', 'Desk', 'Stick'),
-                    'label' => 'select a thing',
+                    'label' => 'Multiple already selected',
                 ),
-                '<fieldset class="form-group" id="unittest_things_container">
-	                <legend>select a thing</legend>
+                '<fieldset class="form-group" id="unittest_things_3_container">
+	                <legend>Multiple already selected</legend>
 	                <div class="controls">
-		                <div class="radio"><label><input id="unittest_things_1" name="things" type="radio" value="Hammer" />Hammer</label></div>
-		                <div class="radio"><label><input id="unittest_things_2" name="things" type="radio" value="Banana" />Banana</label></div>
-		                <div class="radio"><label><input id="unittest_things_3" name="things" type="radio" value="Pillow" />Pillow</label></div>
-		                <div class="radio"><label><input id="unittest_things_4" name="things" type="radio" value="Desk" />Desk</label></div>
-		                <div class="radio"><label><input id="unittest_things_5" name="things" type="radio" value="Stick" />Stick</label></div>
+		                <div class="checkbox"><label><input checked="checked" id="unittest_things_3_1" name="things[]" type="checkbox" value="Hammer" />Hammer</label></div>
+		                <div class="checkbox"><label><input id="unittest_things_3_2" name="things[]" type="checkbox" value="Banana" />Banana</label></div>
+		                <div class="checkbox"><label><input id="unittest_things_3_3" name="things[]" type="checkbox" value="Pillow" />Pillow</label></div>
+		                <div class="checkbox"><label><input id="unittest_things_3_4" name="things[]" type="checkbox" value="Desk" />Desk</label></div>
+		                <div class="checkbox"><label><input checked="checked" id="unittest_things_3_5" name="things[]" type="checkbox" value="Stick" />Stick</label></div>
 		            </div>
                 </fieldset>',
                 array(
-                    'label' => 'select a thing',
+                    'label' => 'Multiple already selected',
                     'options' => array(
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_2_1', 'name' => 'things', 'value' => 'Hammer', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_1', 'name' => 'things[]', 'value' => 'Hammer', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => true,
                             ),
                             'attribsLabel' => array(),
                             'attribsPair' => array(
                                 'class' => array(
-                                    'radio',
+                                    'checkbox',
                                 ),
                             ),
                             'label' => 'Hammer',
-                            'input' => '<input id="unittest_things_2_1" name="things" type="radio" value="Hammer" />',
+                            'input' => '<input checked="checked" id="unittest_things_4_1" name="things[]" type="checkbox" value="Hammer" />',
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_2_2', 'name' => 'things', 'value' => 'Banana', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_2', 'name' => 'things[]', 'value' => 'Banana', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false,
                             ),
                             'attribsLabel' => array(),
                             'attribsPair' => array(
                                 'class' => array(
-                                    'radio',
+                                    'checkbox',
                                 ),
                             ),
                             'label' => 'Banana',
-                            'input' => '<input id="unittest_things_2_2" name="things" type="radio" value="Banana" />',
+                            'input' => '<input id="unittest_things_4_2" name="things[]" type="checkbox" value="Banana" />',
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_2_3', 'name' => 'things', 'value' => 'Pillow', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_3', 'name' => 'things[]', 'value' => 'Pillow', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false,
                             ),
                             'attribsLabel' => array(),
                             'attribsPair' => array(
                                 'class' => array(
-                                    'radio',
+                                    'checkbox',
                                 ),
                             ),
                             'label' => 'Pillow',
-                            'input' => '<input id="unittest_things_2_3" name="things" type="radio" value="Pillow" />',
+                            'input' => '<input id="unittest_things_4_3" name="things[]" type="checkbox" value="Pillow" />',
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_2_4', 'name' => 'things', 'value' => 'Desk', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_4', 'name' => 'things[]', 'value' => 'Desk', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false,
                             ),
                             'attribsLabel' => array(),
                             'attribsPair' => array(
                                 'class' => array(
-                                    'radio',
+                                    'checkbox',
                                 ),
                             ),
                             'label' => 'Desk',
-                            'input' => '<input id="unittest_things_2_4" name="things" type="radio" value="Desk" />',
+                            'input' => '<input id="unittest_things_4_4" name="things[]" type="checkbox" value="Desk" />',
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_2_5', 'name' => 'things', 'value' => 'Stick', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_5', 'name' => 'things[]', 'value' => 'Stick', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => true,
                             ),
                             'attribsLabel' => array(),
                             'attribsPair' => array(
                                 'class' => array(
-                                    'radio',
+                                    'checkbox',
                                 ),
                             ),
                             'label' => 'Stick',
-                            'input' => '<input id="unittest_things_2_5" name="things" type="radio" value="Stick" />',
+                            'input' => '<input checked="checked" id="unittest_things_4_5" name="things[]" type="checkbox" value="Stick" />',
                         ),
                     ),
                     'useFieldset' => true,
                 ),
             ),
+
+            array(
+                $controlFactory,
+                array(
+                    'label' => 'Things (radio)',
+                    'type' => 'radio',
+                    'name' => 'things2',
+                    'value' => 'Other',     // should be selected
+                    'options' => array(
+                        'This',
+                        'That',
+                        array('value' => 'Other', 'disabled' => true),
+                    ),
+                ),
+                '<fieldset class="form-group" id="unittest_things2_container">
+                    <legend>Things (radio)</legend>
+                    <div class="controls">
+                        <div class="radio"><label><input id="unittest_things2_1" name="things2" type="radio" value="This" />This</label></div>
+                        <div class="radio"><label><input id="unittest_things2_2" name="things2" type="radio" value="That" />That</label></div>
+                        <div class="disabled radio"><label><input checked="checked" disabled="disabled" id="unittest_things2_3" name="things2" type="radio" value="Other" />Other</label></div>
+                    </div>
+                </fieldset>',
+                array(
+                    'label' => 'Things (radio)',
+                    'options' => array(
+                        array(
+                            'attribs' => array(
+                                'id' => 'unittest_things2_2_1', 'name' => 'things2', 'value' => 'This', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                            ),
+                            'attribsLabel' => array(),
+                            'attribsPair' => array(
+                                'class' => array(
+                                    'radio',
+                                ),
+                            ),
+                            'label' => 'This',
+                            'input' => '<input id="unittest_things2_2_1" name="things2" type="radio" value="This" />',
+                        ),
+                        array(
+                            'attribs' => array(
+                                'id' => 'unittest_things2_2_2', 'name' => 'things2', 'value' => 'That', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                            ),
+                            'attribsLabel' => array(),
+                            'attribsPair' => array(
+                                'class' => array(
+                                    'radio',
+                                ),
+                            ),
+                            'label' => 'That',
+                            'input' => '<input id="unittest_things2_2_2" name="things2" type="radio" value="That" />',
+                        ),
+                        array(
+                            'attribs' => array(
+                                'id' => 'unittest_things2_2_3', 'name' => 'things2', 'value' => 'Other', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => true, 'disabled' => true,
+                            ),
+                            'attribsLabel' => array(),
+                            'attribsPair' => array(
+                                'class' => array(
+                                    'radio',
+                                ),
+                            ),
+                            'label' => 'Other',
+                            'input' => '<input checked="checked" disabled="disabled" id="unittest_things2_2_3" name="things2" type="radio" value="Other" />',
+                        ),
+                    ),
+                    'useFieldset' => true,
+                ),
+            ),
+
+
+
         );
     }
 }

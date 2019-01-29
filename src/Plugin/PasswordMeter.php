@@ -2,6 +2,7 @@
 
 namespace bdk\Form\Plugin;
 
+use bdk\Form;
 
 /**
  * outputs password feedback html/css/javascript
@@ -9,25 +10,34 @@ namespace bdk\Form\Plugin;
 class PasswordMeter
 {
 
-    /**
-     * Constructor
-     */
-    public function __construct()
-    {
-        $this->debug = \bdk\Debug::getInstance();
-    }
+    public $form;
+    public $cfg = array(
+        'selector' => 'input[type=password]',
+        'pwdMeter' => '',
+        'newPassword' => '',
+    );
 
     /**
-     * @param string $selector css selector
+     * Constructor
      *
-     * @return string
+     * @param Form $form form instance
+     * @param cfg  $cfg  config options
      */
-    function getPasswordMeter($selector)
+    public function __construct(Form $form, $cfg = array())
     {
-        $this->debug->group(__METHOD__);
-        \add_head_tag('script','/common/js/pwd_meter/password-meter.js', array('defer'=>true));
-        \add_head_tag('script','/common/js/pwd_meter/new_password_jquery.js', array('defer'=>true));
-        $style = <<<EOD
+        $this->debug = \bdk\Debug::getInstance();
+        $this->form = $form;
+        $this->cfg = \array_merge($this->cfg, array(
+            'pwdMeter' => __DIR__.'/pwdMeter/pwdMeter.min.js',
+            'newPassword' => __DIR__.'/pwdMeter/newPasswordJquery.js',
+        ), $cfg);
+    }
+
+    public function getCss()
+    {
+        $checkboxImg = $this->form->asset(__DIR__.'/pwdMeter/images/16-em-check.png');
+        $scorebarImg = $this->form->asset(__DIR__.'/pwdMeter/images/bg_strength.jpg');
+        $css = <<<EOD
     .passwordFeedback {
         /*
         margin-top:2em;
@@ -52,7 +62,7 @@ class PasswordMeter
         text-align: center;
     }
     #scorebar {
-        background: url(/common/js/pwd_meter/images/bg_strength.jpg) repeat 0px 0px;
+        background: url({$scorebarImg}) repeat 0px 0px;
         position:absolute;
         width: 100px;
         height: 20px;
@@ -74,14 +84,17 @@ class PasswordMeter
         padding: 0;
     }
     #criteria .checked .checkbox {
-        background-image:url(/images/tiny/png-8/16-em-check.png);
+        background-image:url({$checkboxImg});
     }
 EOD;
-        \append_content('style', $style);
-        //
-        $script = <<<EOD
+        return $css;
+    }
+
+    public function getScript()
+    {
+        $script = <<<'EOD'
     passwordmeter = new PasswordFeedback({
-        selector : '{$selector}',
+        selector : "{{selector}}",
         criteria : ['alphaL','alphaU','exclude','length','numeric','special'],  // the checkmarks below
         init : function(pm) {
             pm.PasswordLength.minimum = 8;
@@ -100,9 +113,7 @@ EOD;
                 },
                 k = '',
                 v = '',
-                \$node = null;
-            // console.log('cs',cs);
-            // console.log('checkmarks',checkmarks);
+                $node;
             if (checkmarks.length) {
                 // console.log('minimum met');
                 $('.passwordFeedback .length .min').hide();
@@ -116,21 +127,36 @@ EOD;
                 $('.passwordFeedback .length .max').hide();
             }
             for (k in checkmarks) {
-                // console.log('pair.key',pair.key);
                 v = checkmarks[k];
-                \$node = $('#criteria .'+k);
-                if ( v ) {
-                    \$node.addClass('checked');
-                    \$node.find('.checkbox').css({'opacity': v});
+                $node = $('#criteria .'+k);
+                if (v) {
+                    $node.addClass('checked');
+                    $node.find('.checkbox').css({'opacity': v});
                 } else {
-                    \$node.removeClass('checked');
+                    $node.removeClass('checked');
                 }
             };
         } // end onchange
     });
 EOD;
-        append_content('script', $script);
-        $html = <<<'EOD'
+        $script = \str_replace('{{selector}}', $this->cfg['selector'], $script);
+        return $script;
+    }
+
+    /**
+     * Output password strength feedback
+     *
+     * @return string
+     */
+    public function output()
+    {
+        $this->debug->group(__METHOD__);
+        $html = '';
+        $html .= '<script src="'.$this->form->asset($this->cfg['pwdMeter']).'"></script>'."\n";
+        $html .= '<script src="'.$this->form->asset($this->cfg['newPassword']).'"></script>'."\n";
+        $html .= '<script>'.$this->getScript().'</script>'."\n";
+        $html .= '<style>'.$this->getCss().'</style>'."\n";
+        $html .= <<<'EOD'
             <div class="passwordFeedback">
                 <h3>Password Strength:</h3>
                 <div id="scorebarBorder" class="reset-box-sizing">

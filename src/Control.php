@@ -5,15 +5,17 @@ namespace bdk\Form;
 use bdk\ArrayUtil;
 use bdk\Form;
 use bdk\Form\ControlBuilder;
+use bdk\Form\ControlFactory;
 
-class Control extends ControlBase
+class Control
 {
 
     public $form;
     protected $debug;
-    protected $attribs;
-    protected $controlBuilder;
+    protected $controlFactory;
     protected $callStack = array();
+    protected $props = array();
+    protected $propKeys = array();
 
     /**
      * @var $idCounts keep track of ids generated across all forms
@@ -24,13 +26,14 @@ class Control extends ControlBase
      * Constructor
      *
      * @param array          $props          Control properties/definition
-     * @param ControlBuilder $controlBuilder ControlBuilder instance
      * @param Form           $form           parent form object]
+     * @param ControlFactory $controlFactory ControlFactory instance
+     *                                          passed as it contains/maintains default properties
      */
-    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
+    public function __construct($props = array(), Form $form = null, ControlFactory $controlFactory = null)
     {
         $this->debug = \bdk\Debug::getInstance();
-        $this->controlBuilder = $controlBuilder;
+        $this->controlFactory = $controlFactory;
         $this->form = $form;
         $this->setProps($props);
     }
@@ -45,16 +48,18 @@ class Control extends ControlBase
      */
     public function __get($key)
     {
-        $this->debug->log('__get', $key);
         if (\method_exists($this, 'get'.\ucfirst($key))) {
             $method = 'get'.\ucfirst($key);
             return $this->{$method}();
         } elseif (\array_key_exists($key, $this->props['attribs'])) {
             return $this->props['attribs'][$key];
+        } elseif (\array_key_exists($key, $this->props)) {
+            if (\strpos($key, 'attribs') === 0) {
+                $this->{$key} = &$this->props[$key];
+            }
+            return $this->props[$key];
         } elseif (\in_array($key, array('form','props'))) {
             return $this->{$key};
-        } elseif (\array_key_exists($key, $this->props)) {
-            return $this->props[$key];
         }
         return null;
     }
@@ -81,7 +86,13 @@ class Control extends ControlBase
      */
     public function __set($key, $value)
     {
-        $this->props[$key] = $value;
+        if (\in_array($key, $this->propKeys)) {
+            // known property
+            $this->props[$key] = $value;
+        } else {
+            // assume attribute
+            $this->props['attribs'][$key] = $value;
+        }
     }
 
     /**
@@ -101,17 +112,29 @@ class Control extends ControlBase
             $propOverride = array();
         }
         if ($propOverride) {
+            $this->debug->warn('propOverride');
             $this->props = $this->mergeProps(array(
                 $this->props,
                 $propOverride,
             ));
         }
-        $return = $this->controlBuilder->build($this);
+        // $this->debug->log('build props', $this->props);
+        $return = $this->controlFactory->controlBuilder->build($this);
         return $return;
     }
 
+    public static function classAdd(&$attribs, $classNames)
+    {
+        ControlBuilder::classAdd($attribs, $classNames);
+    }
+
+    public static function classRemove(&$attribs, $classNames)
+    {
+        ControlBuilder::classRemove($attribs, $classNames);
+    }
+
     /**
-     * Clear the static ID counter that ensures fields have unique IDs
+     * Clear the static ID counter that ensures controls have unique IDs
      *
      * @return void
      */
@@ -180,7 +203,7 @@ class Control extends ControlBase
             $keys = \array_keys($this->props['options']);
             $this->props['options'][ $keys[0] ]['autofocus'] = true;
         } else {
-            $this->attribs['autofocus'] = true;
+            $this->props['attribs']['autofocus'] = true;
         }
     }
 
@@ -220,7 +243,7 @@ class Control extends ControlBase
      *
      * @param boolean $increment increment static counter?
      *
-     * @return string|null u\Unique ID
+     * @return string|null Unique ID
      */
     public function getUniqueId($increment = true)
     {
@@ -258,40 +281,176 @@ class Control extends ControlBase
     }
 
     /**
+     * Merge control properties
+     *
+     * @param array   $mergeStack array of property arrays
+     * @param boolean $options    options passed to ArrayUtil::mergeDeep
+     *
+     * @return array merged properties
+     */
+    public function mergeProps($mergeStack, $options = array())
+    {
+        $merged = array();
+        /*
+            tricky:  array may contain references...  which we don't want to affect
+        */
+        // $mergeStack = \json_decode(\json_encode($mergeStack), true); // borks objects
+        while ($mergeStack) {
+            $props = \array_shift($mergeStack);
+            $props = $this->moveAttribs($props);
+            $props = self::mergeClassesPrep($merged, $props, !$mergeStack);
+            $merged = ArrayUtil::mergeDeep($merged, $props, $options);
+        }
+
+        if (isset($merged['attribs']) && isset($merged['template'])) {
+            \preg_match_all('#{{([^}]+)}}#', $merged['template'], $matches);
+            $moveBack = \array_intersect_key($merged['attribs'], \array_flip($matches[1]));
+            $merged['attribs'] = \array_diff_key($merged['attribs'], $moveBack);
+            $merged += $moveBack;
+        }
+
+        return $merged;
+    }
+
+    /**
+     * Move attribs to 'attribs' array
+     *
+     * @param array $props properties
+     *
+     * @return array
+     */
+    protected function moveAttribs($props)
+    {
+        /*
+        $attribShortcuts = array(
+            'checked',
+            'disabled',
+            'name',
+            'required',
+            'selected',
+            'type',
+            'value',
+        );
+        */
+        if (!$this->propKeys) {
+            return $props;
+        }
+        if (!isset($props['attribs'])) {
+            $props['attribs'] = array();
+        }
+
+        if (isset($props['attributes'])) {
+            $props['attribs'] = \array_merge($props['attribs'], $props['attributes']);
+            unset($props['attributes']);
+        }
+
+
+        $attribsMove = \array_diff_key($props, \array_flip($this->propKeys));
+
+        /*
+        $attribsMove = \array_diff_key($props, \array_flip($nonAttribKeys))
+            + \array_intersect_key($props, \array_flip($attribShortcuts));
+        $props = \array_diff_key($props, $attribsMove);
+        $props['attribs'] = \array_merge($attribsMove, $props['attribs']);
+        */
+        /*
+        foreach ($attribShortcuts as $k) {
+            if (\array_key_exists($k, $props) && !isset($props['attribs'][$k])) {
+                $props['attribs'][$k] = $props[$k];
+            }
+            unset($props[$k]);
+        }
+        */
+        $props = \array_diff_key($props, $attribsMove);
+
+        // not using array_merge as we don't want to overwrite with null
+        foreach ($attribsMove as $k => $v) {
+            if (\strpos($k, 'attribs') === 0) {
+                $props[$k] = $v;
+            } elseif (!isset($props['attribs'][$k])) {
+                $props['attribs'][$k] = $v;
+            }
+        }
+        return $props;
+    }
+
+    protected function getDefaultProps($type)
+    {
+        $propsDefaultType = array();
+        if (isset($this->controlFactory->defaultPropsPerType[$type])) {
+            $propsDefaultType = $this->controlFactory->defaultPropsPerType[$type];
+        }
+        return $propsDefaultType;
+    }
+
+    /**
      * Set control properties
      *
      * @param array $props [description]
      *
      * @return void
      */
-    public function setProps($props = array(), $merge = true)
+    public function setProps($props = array())
     {
-        $props = $this->moveShortcuts($props);
-        $this->debug->log('setProps');
-        if ($merge) {
-            $type = isset($props['attribs']['type']) ? $props['attribs']['type'] : 'text';
-            $isTypeChanging = !isset($this->props['attribs']['type']) || $type !== $this->props['attribs']['type'];
-            $propsType = $isTypeChanging && isset($this->defaultProps[$type])
-                ? $this->defaultProps[$type]
-                : array();
-            $this->props = $this->mergeProps(array(
-                $this->props ?: $this->defaultProps['default'],
-                $propsType,
-                $props,
-            ));
+        // $this->debug->log('setProps', $props);
+        $type = 'text';
+        if (isset($props['attribs']['type'])) {
+            $type = $props['attribs']['type'];
+        } elseif (isset($props['type'])) {
+            $type = $props['type'];
+        } elseif (isset($this->props['attribs']['type'])) {
+            $type = $this->props['attribs']['type'];
         } else {
-            $this->props = $props;
+            $type = 'text';
         }
+        $isTypeChanging = !isset($this->props['attribs']['type']) || $type !== $this->props['attribs']['type'];
+
+        $propsDefault = array();
+        $propsDefaultType = array();
+        if ($isTypeChanging) {
+            $propsDefault = $this->props ?: $this->controlFactory->defaultProps;
+            $propsDefaultType = $this->getDefaultProps($type);
+            if ($type == 'submit' && empty($props['label']) && !empty($props['attribs']['value'])) {
+                $props['label'] = $props['attribs']['value'];
+            }
+            $this->setPropKeys($type);
+        }
+        $this->props = $this->mergeProps(array(
+            $propsDefault,
+            $propsDefaultType,
+            $props,
+        ));
         if (empty($this->props['attribs']['x-moz-errormessage']) && !empty($this->props['invalidReason'])) {
             $this->props['attribs']['x-moz-errormessage'] = $this->props['invalidReason'];
         }
-        $this->attribs = &$this->props['attribs'];
+        foreach (\array_keys($this->props) as $k) {
+            if (\strpos($k, 'attribs') === 0) {
+                $this->{$k};
+            }
+        }
         $this->getId();
         if (\in_array($type, array('checkbox','radio','select'))) {
             $this->normalizeCrs();
-        } elseif ($type == 'submit' && empty($props['label']) && !empty($props['attribs']['value'])) {
-            $props['label'] = $props['attribs']['value'];
         }
+    }
+
+    /**
+     * Get property keys..
+     * Any non-recognized key will be treated as a control attribute
+     *
+     * @param string $type input type
+     *
+     * @return void
+     */
+    private function setPropKeys($type)
+    {
+        $propsDefault = $this->controlFactory->defaultProps;
+        $propsDefault += $this->getDefaultProps($type);
+        $this->propKeys = \array_merge(
+            $this->propKeys,
+            \array_keys($propsDefault),
+            array('pageI')
+        );
     }
 
     /**
@@ -310,7 +469,7 @@ class Control extends ControlBase
             }
             $this->props['values'] = (array) $value;
         } else {
-            $this->attribs['value'] = $value;
+            $this->props['attribs']['value'] = $value;
         }
         if ($store) {
             if ($this->props['setValRaw']) {
@@ -412,6 +571,63 @@ class Control extends ControlBase
     }
 
     /**
+     * Utility class to merge classnames
+     * Doesn't actually merge...
+     *   removes default classnames if replacing
+     *
+     * classnames may be defined as:
+     *      'string'                            (space separated classnames)
+     *      array()                             (array -o- classnames)
+     *      array('string', 'merge'|'replace')
+     *      array(array(), 'merge'|'replace')
+     *      array(null, 'replace')
+     *
+     * @param array   $propsDefault         default control properties
+     * @param array   $props                control properties
+     * @param boolean $keepClassReplaceFlag should we retain merge/replace flag?
+     *
+     * @return array
+     */
+    private static function mergeClassesPrep(&$propsDefault, $props, $keepClassReplaceFlag = false)
+    {
+        foreach ($props as $k => $v) {
+            if (!\is_array($v) || !\array_key_exists('class', $v)) {
+                continue;
+            }
+            $merge = true;         // merge is default behavior
+            $class = $v['class'];
+            if (\is_array($class)) {
+                if (\count($class) == 2 && \in_array($class[1], array('merge','replace'))) {
+                    // merge or replace specified
+                    $merge = $class[1] === 'merge';
+                    $class = $class[0]; // string | array | null
+                    if (!\is_array($class)) {
+                        $class = \array_filter(\explode(' ', $class), 'strlen');
+                    }
+                } elseif (\count($class) > 2 && \in_array(\end($class), array('merge','replace'))) {
+                    $merge = \end($class) === 'merge';
+                    $class = \array_slice($class, 0, -1);
+                }
+            } else {
+                $class = \array_filter(\explode(' ', $class), 'strlen');
+                if (\count($class) > 1 && \in_array(\end($class), array('merge','replace'))) {
+                    $merge = \end($class) === 'merge';
+                    $class = \array_slice($class, 0, -1);
+                }
+            }
+            if (!$merge) {
+                // replace... remove the default class
+                if ($keepClassReplaceFlag) {
+                    $class[] = 'replace';
+                }
+                unset($propsDefault[$k]['class']);
+            }
+            $props[$k]['class'] = $class;
+        }
+        return $props;
+    }
+
+    /**
      * Normalize Checkbox/Radio/Select properties
      *
      * @return void
@@ -419,6 +635,7 @@ class Control extends ControlBase
     protected function normalizeCrs()
     {
         $type = $this->props['attribs']['type'];
+        // $this->debug->info('normalizeCrs', $type);
         if (empty($this->props['options'])) {
             $this->props['options'] = array();
             if ($type == 'checkbox') {
@@ -445,14 +662,14 @@ class Control extends ControlBase
                     ),
                 );
             } else {
-                $option = $this->moveShortcuts($option);
+                $option = $this->moveAttribs($option);
                 if (!isset($option['label']) && isset($option['attribs']['value'])) {
                     $option['label'] = $option['attribs']['value'];
                 }
                 $this->props['options'][$key] = $option;
             }
         }
-        if (\in_array($type, array('checkbox','select')) && !isset($this->props['values'])) {
+        if (\in_array($type, array('checkbox','select')) && !$this->props['values']) {
             /*
                 values may be passed as an alternate way of specifying which values are checked/selected
                 single checkbox:
@@ -461,7 +678,7 @@ class Control extends ControlBase
             $this->props['values'] = isset($this->attribs['value'])
                 ? (array) $this->attribs['value']
                 : array();
-            unset($this->attribs['value']);
+            unset($this->props['attribs']['value']);
         }
     }
 
@@ -530,7 +747,7 @@ class Control extends ControlBase
                 }
             }
         }
-        if (($this->isRequired() || !empty($required) ) && !empty($enabled) && empty($nonEmpty)) {
+        if (($this->isRequired() || !empty($required)) && !empty($enabled) && empty($nonEmpty)) {
             $this->debug->log('required, enabled, & no value!');
             $this->props['isValid'] = false;
         }

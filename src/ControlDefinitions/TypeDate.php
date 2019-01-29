@@ -2,32 +2,13 @@
 
 namespace bdk\Form\ControlDefinitions;
 
-use bdk\Form;
 use bdk\Form\Control;
-use bdk\Form\ControlBuilder;
 
 /**
  * Date
  */
 class TypeDate extends Control
 {
-
-    /**
-     * {@inheritDoc}
-     */
-    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
-    {
-        $props = $this->mergeProps(array(
-            array(
-                'attribs' => array(
-                    'class' => 'hide-spinbtns',
-                    'placeholder' => 'yyyy-mm-dd',
-                ),
-            ),
-            $props,
-        ));
-        parent::__construct($props, $controlBuilder, $form);
-    }
 
     /**
      * [getDateArray description]
@@ -77,7 +58,7 @@ class TypeDate extends Control
     }
 
     /**
-     * Validate field
+     * Validate control
      *
      * @return boolean
      */
@@ -92,17 +73,27 @@ class TypeDate extends Control
     /**
      * Get formated value
      *
-     * @param object $field instance
+     * @param Control $control instance
      *
      * @return string
      */
-    public function getValFormatted($field)
+    public function getValFormatted(Control $control)
     {
-        if ($this->validate($field)) {
-            $value = $field->valRaw();
+        if ($this->validate($control)) {
+            $value = $control->valRaw();
             $dateArray = $this->getDateArray($value);
             return \sprintf('%04d-%02d-%02d', $dateArray['year'], $dateArray['mon'], $dateArray['mday']);
         }
         return null;
+    }
+
+    protected function getDefaultProps($type)
+    {
+        return array(
+            'attribs' => array(
+                'class' => 'hide-spinbtns',
+                'placeholder' => 'yyyy-mm-dd',  // placeholder is ignored on modern browsers with a date-picker
+            ),
+        );
     }
 }

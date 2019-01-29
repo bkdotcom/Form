@@ -2,36 +2,13 @@
 
 namespace bdk\Form\ControlDefinitions;
 
-use bdk\Form;
 use bdk\Form\Control;
-use bdk\Form\ControlBuilder;
 
 /**
  * Social Security Number
  */
 class Ssn extends Control
 {
-
-    /**
-     * {@inheritDoc}
-     */
-    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
-    {
-        $props = $this->mergeProps(array(
-            array(
-                'attribs' => array(
-                    'autocomplete'  => 'off',
-                    'pattern'       => '\d{3}[\. -]?\d{2}[\. -]?\d{4}',
-                    'placeholder'   => 'nnn-nn-nnnn',
-                    'size'          => 11,
-                    'title'         => 'SSN: nnn-nnnn',
-                ),
-                'invalidReason' => 'Must be formatted nnn-nn-nnnn',
-            ),
-            $props,
-        ));
-        parent::__construct($props, $controlBuilder, $form);
-    }
 
     /**
      * Validate control
@@ -74,5 +51,19 @@ class Ssn extends Control
             return $area.'-'.$group.'-'.$serial;
         }
         return null;
+    }
+
+    protected function getDefaultProps($type)
+    {
+        return array(
+            'attribs' => array(
+                'autocomplete'  => 'off',
+                'pattern'       => '\d{3}[\. -]?\d{2}[\. -]?\d{4}',
+                'placeholder'   => 'nnn-nn-nnnn',
+                'size'          => 11,
+                'title'         => 'SSN: nnn-nnnn',
+            ),
+            'invalidReason' => 'Must be formatted nnn-nn-nnnn',
+        );
     }
 }

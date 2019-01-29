@@ -4,36 +4,13 @@ namespace bdk\Form\ControlDefinitions;
 
 use bdk\Form;
 use bdk\Form\Control;
-use bdk\Form\ControlBuilder;
+use bdk\Form\ControlFactory;
 
 /**
  * Credit Card
  */
 class Creditcard extends Control
 {
-
-    /**
-     * {@inheritDoc}
-     */
-    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
-    {
-        $props = $this->mergeProps(array(
-            array(
-                'attribs' => array(
-                    'autocomplete'  => 'off',
-                    'data-lpignore' => true,    // no LastPass icon
-                    'maxlength'     => 19,
-                    'pattern'       => '((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})', // visa/mastercard/discover & AmEx
-                    'placeholder'   => 'nnnn-nnnn-nnnn-nnnn',
-                    'size'          => 18,
-                    'title'         => 'nnnn-nnnn-nnnn-nnnn',
-                ),
-                'invalidReason' => 'Must be a valid credit card #',
-            ),
-            $props,
-        ));
-        parent::__construct($props, $controlBuilder, $form);
-    }
 
     /**
      * Validate control
@@ -82,5 +59,21 @@ class Creditcard extends Control
         $digits = \preg_replace('/\D/', '', $control->attribs['value']);  // remove all non-digits
         return \implode('-', \str_split($digits, 4));
         // $return = \implode('-', \sscanf($answer, '%4s%4s%4s%4s'));
+    }
+
+    protected function getDefaultProps($type)
+    {
+        return array(
+            'attribs' => array(
+                'autocomplete'  => 'off',
+                'data-lpignore' => true,    // no LastPass icon
+                'maxlength'     => 19,
+                'pattern'       => '((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})', // visa/mastercard/discover & AmEx
+                'placeholder'   => 'nnnn-nnnn-nnnn-nnnn',
+                'size'          => 18,
+                'title'         => 'nnnn-nnnn-nnnn-nnnn',
+            ),
+            'invalidReason' => 'Must be a valid credit card #',
+        );
     }
 }

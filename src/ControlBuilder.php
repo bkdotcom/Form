@@ -5,32 +5,36 @@ namespace bdk\Form;
 use bdk\Html;
 use bdk\Str;
 use bdk\Form\Control;
-use bdk\Form\ControlBase;
-// use bdk\Form\ControlFactory;
+use bdk\Form\ControlFactory;
 use bdk\PubSub\Event;
 use bdk\PubSub\Manager as EventManager;
 
 /**
- * Build Input
+ * Build Control's HTML
  */
-class ControlBuilder extends ControlBase
+class ControlBuilder
 {
 
     public $eventManager;
-    protected $control;
     protected $building = array();
+    protected $control;
     // protected $controlFactory;
+    protected $props = array();
 
     /**
      * Constructor
      *
-     * @param EventManager   $eventManager   event manager instance
-     * @param ControlFactory $controlFactory controlFactory instance
+     * @param ControlFactory|array $defaultProps        ControlFactory or default properties
+     * @param array                $defaultPropsPerType Per-type control properties
      */
-    public function __construct(EventManager $eventManager)
+    public function __construct($defaultProps = array(), $defaultPropsPerType = array())
     {
-        $this->eventManager = $eventManager;
-        // $this->controlFactory = $controlFactory;
+        $this->eventManager = new EventManager();
+        if ($defaultProps instanceof ControlFactory) {
+            $this->controlFactory = $defaultProps;
+        } else {
+            $this->controlFactory = new ControlFactory(null, $defaultProps, $defaultPropsPerType);
+        }
         $this->eventManager->subscribe('form.buildControl', array($this, 'onBuildControl'));
     }
 
@@ -43,13 +47,14 @@ class ControlBuilder extends ControlBase
      */
     public function build($control)
     {
+        \bdk\Debug::_groupCollapsed(__METHOD__, \is_array($control) ? $control : $control->type.': '.$control->name);
         $return = '';
         if (\is_array($control)) {
             $control = $this->controlFactory->build($control);
         }
-        \bdk\Debug::_group(__METHOD__, $control->attribs['name']);
         $this->control = $control;
         $this->props = $control->props;
+
         $id = $control->getId();
         $isBuilding = \in_array($id, $this->building);
         $uniqueId = $control->getUniqueId(!$isBuilding);
@@ -60,6 +65,8 @@ class ControlBuilder extends ControlBase
             $return = $this->eventManager->publish('form.buildControl', $control, array(
                 'return' => $return,
             ))['return'];
+        } else {
+            $return = $this->doBuild();
         }
         $key = \array_search($id, $this->building);
         if ($key !== false) {
@@ -69,9 +76,61 @@ class ControlBuilder extends ControlBase
         return $return;
     }
 
+    /**
+     * Add classname(s)
+     *
+     * @param array        $attribs    [description]
+     * @param string|array $classNames [description]
+     *
+     * @return void
+     */
+    public static function classAdd(&$attribs, $classNames)
+    {
+        $classNamesCur = isset($attribs['class'])
+            ? $attribs['class']
+            : array();
+        if (!\is_array($classNamesCur)) {
+            $classNamesCur = \explode(' ', $classNamesCur);
+        }
+        if (!\is_array($classNames)) {
+            $classNames = \explode(' ', $classNames);
+        }
+        $classNames = \array_merge($classNamesCur, $classNames);
+        $classNames = \array_unique($classNames);
+        $attribs['class'] = $classNames;
+    }
+
+    /**
+     * remove classname(s)
+     *
+     * @param array        $attribs    [description]
+     * @param string|array $classNames [description]
+     *
+     * @return void
+     */
+    public static function classRemove(&$attribs, $classNames)
+    {
+        $classNamesCur = isset($attribs['class'])
+            ? $attribs['class']
+            : array();
+        if (!\is_array($classNamesCur)) {
+            $classNamesCur = \explode(' ', $classNamesCur);
+        }
+        if (!\is_array($classNames)) {
+            $classNames = \explode(' ', $classNames);
+        }
+        $attribs['class'] = \array_diff($classNamesCur, $classNames);
+    }
+
+    /**
+     * form.buildContnrol subscriber
+     *
+     * @param Event $event Event instance
+     *
+     * @return void
+     */
     public function onBuildControl(Event $event)
     {
-        // see if control has a doBuild method that returns something or a callable 'build' property
         $return = $event->getSubject()->doBuild();
         if (!$return) {
             $return = $this->doBuild();
@@ -81,7 +140,7 @@ class ControlBuilder extends ControlBase
     }
 
     /**
-     * [addAttributes description]
+     * Add/remove dependant attribs/classes
      *
      * @return void
      */
@@ -210,7 +269,7 @@ class ControlBuilder extends ControlBase
         $isMultiple = \count($props['options']) > 1;
         foreach ($props['options'] as $i => $optProps) {
             // unset($optProps['attribs']['tagname']);
-            $optProps = ControlBase::mergeProps(array(
+            $optProps = $this->control->mergeProps(array(
                 array(
                     'attribs' => $props['attribs'], // name, type, & other "global" attributes
                 ),
@@ -289,7 +348,7 @@ class ControlBuilder extends ControlBase
             $props['addonAfter'] = '<span class="'.$addonClass.'">'.$props['addonAfter'].'</span>';
         }
         // since default attribsInputGroup didn't exist it's a bit cumbersome to merge here
-        $propsInputGroup = $this->mergeProps(array(
+        $propsInputGroup = $this->control->mergeProps(array(
             array(
                 'attribs' => array( 'class' => 'input-group' ), // name, type, & other "global" attributes
             ),
@@ -330,7 +389,7 @@ class ControlBuilder extends ControlBase
     }
 
     /**
-     * [buildSelect description]
+     * Build a <select> control
      *
      * @return string html
      */
@@ -339,18 +398,22 @@ class ControlBuilder extends ControlBase
         if (!empty($this->props['attribs']['multiple']) && \substr($this->props['attribs']['name'], -2) !== '[]') {
             $this->props['attribs']['name'] .= '[]';
         }
-        if ($this->props['attribs']['required'] && !$this->props['attribs']['multiple'] && $this->props['options']) {
+        if ($this->props['addSelectOpt']
+            && !$this->props['attribs']['multiple']
+            // && !$this->props['values']
+            // && $this->props['options']
+        ) {
             /*
                 Check for an empty-value "Select" option
                 If no empty option, add one
             */
-            $firstValue = $this->props['options'][0]['attribs']['value'];
-            $emptyValues = array('','--','select');
-            if (!\in_array(\strtolower($firstValue), $emptyValues)) {
+            $optKeys = \array_keys($this->props['options']);
+            $firstValue = $this->props['options'][$optKeys[0]]['attribs']['value'];
+            if (!\in_array(\strtolower($firstValue), array('','--','select'))) {
                 $selectOption = array(
                     'attribs' => array(
                         'value' => '',
-                        'disabled' => true,
+                        'disabled' => $this->props['attribs']['required'],
                         'selected' => empty($this->props['values']),
                     ),
                     'label' => 'Select',
@@ -471,52 +534,6 @@ class ControlBuilder extends ControlBase
     }
 
     /**
-     * Add classname(s)
-     *
-     * @param array        $attribs    [description]
-     * @param string|array $classNames [description]
-     *
-     * @return void
-     */
-    protected function classAdd(&$attribs, $classNames)
-    {
-        $classNamesCur = isset($attribs['class'])
-            ? $attribs['class']
-            : array();
-        if (!\is_array($classNamesCur)) {
-            $classNamesCur = \explode(' ', $classNamesCur);
-        }
-        if (!\is_array($classNames)) {
-            $classNames = \explode(' ', $classNames);
-        }
-        $classNames = \array_merge($classNamesCur, $classNames);
-        $classNames = \array_unique($classNames);
-        $attribs['class'] = $classNames;
-    }
-
-    /**
-     * remove classname(s)
-     *
-     * @param array        $attribs    [description]
-     * @param string|array $classNames [description]
-     *
-     * @return void
-     */
-    protected function classRemove(&$attribs, $classNames)
-    {
-        $classNamesCur = isset($attribs['class'])
-            ? $attribs['class']
-            : array();
-        if (!\is_array($classNamesCur)) {
-            $classNamesCur = \explode(' ', $classNamesCur);
-        }
-        if (!\is_array($classNames)) {
-            $classNames = \explode(' ', $classNames);
-        }
-        $attribs['class'] = \array_diff($classNamesCur, $classNames);
-    }
-
-    /**
      * Build the html for the given
      *
      * @return string html
@@ -587,21 +604,25 @@ class ControlBuilder extends ControlBase
         if (!$id) {
             return;
         }
-        $this->props = $this->mergeProps(array(
+        $this->props = $this->control->mergeProps(array(
             $this->props,
             array(
                 'attribsContainer' => array(
+                    // 'class' => $this->props['attribsContainer']['class'],
                     'id' => $id.'_container',
                 ),
                 'attribs' => array(
+                    // 'class' => $this->props['attribs']['class'],
                     'id' => $id,
                 ),
                 'attribsLabel' => array(
+                    // 'class' => $this->props['attribsLabel']['class'],
                     'for' => isset($this->props['attribsLabel']['for'])
                         ? $this->props['attribsLabel']['for']
                         : $id,
                 ),
                 'attribsHelpBlock' => array(
+                    // 'class' => $this->props['attribsHelpBlock']['class'],
                     'id' => $id.'_help_block',
                 ),
             ),

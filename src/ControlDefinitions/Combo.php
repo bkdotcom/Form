@@ -5,7 +5,7 @@ namespace bdk\Form\ControlDefinitions;
 use bdk\ArrayUtil;
 use bdk\Form;
 use bdk\Form\Control;
-use bdk\Form\ControlBuilder;
+use bdk\Form\ControlFactory;
 use bdk\PubSub\Event;
 
 /**
@@ -14,28 +14,35 @@ use bdk\PubSub\Event;
 class Combo extends Control
 {
 
-    protected static $isSubscribed = false;
-    // protected static
+    protected static $isSubscribed = array();
+    protected static $comboed = array();
+    protected static $allow = array();
+    protected $propKeys = array('comboTemplate');
 
     /**
      * {@inheritDoc}
      */
-    public function __construct($props = array(), ControlBuilder $controlBuilder = null, Form $form = null)
+    public function __construct($props = array(), Form $form = null, ControlFactory $controlFactory = null)
     {
-        if (!self::$isSubscribed) {
-            $controlBuilder->eventManager->subscribe('form.buildControl', array(\get_class($this), 'onBuildControl'));
-            self::$isSubscribed = true;
+        parent::__construct($props, $form, $controlFactory);
+        \preg_match_all('/{{\s*(.*?)\s*}}/', $this->props['comboTemplate'], $matches);
+        self::$comboed = \array_merge(self::$comboed, $matches[1]);
+
+        $controlBuilder = $controlFactory->controlBuilder;
+        $builderHash = \spl_object_hash($controlBuilder);
+        if (!\in_array($builderHash, self::$isSubscribed)) {
+            $controlBuilder->eventManager->subscribe(
+                'form.buildControl',
+                array(\get_class($this), 'onBuildControlBefore'),
+                1
+            );
+            $controlBuilder->eventManager->subscribe(
+                'form.buildControl',
+                array(\get_class($this), 'onBuildControlAfter'),
+                0
+            );
+            self::$isSubscribed[] = $builderHash;
         }
-        $props = $this->mergeProps(array(
-            array(
-                'attribsControls' =>array(
-                    'class' => 'form-inline',
-                ),
-                'comboTemplate' => ''
-            ),
-            $props,
-        ));
-        parent::__construct($props, $controlBuilder, $form);
     }
 
     /**
@@ -46,30 +53,10 @@ class Combo extends Control
     public function doBuild()
     {
         $this->debug->groupCollapsed(__METHOD__);
-        $controlBuilder = $this->form->controlBuilder;
-        /*
-        $defaultFieldProps = $this->form->cfg['field'];
-        $val = $this->val();
-        $valParts = \explode('-', $val);
-        $nameBase = $this->attribs['name'];
-        $inputs = $controlBuilder->build(ArrayUtil::mergeDeep($defaultFieldProps, array(
-            'name' => $nameBase.'A',
-            'value' => $valParts[0],
-            'tagOnly' => true,
-        )));
-        $inputs .= ' - ';
-        $inputs .= $controlBuilder->build(ArrayUtil::mergeDeep($defaultFieldProps, array(
-            'name' => $nameBase.'B',
-            'value' => $valParts[1],
-            'tagOnly' => true,
-        )));
-        */
-
         $firstId = null;
         $inputs = \preg_replace_callback(
             '/{{\s*(.*?)\s*}}/',
             function ($matches) use (&$firstId) {
-                $this->debug->log('build combo '.$matches[1]);
                 $control = $this->form->getControl($matches[1]);
                 if (!$firstId) {
                     $firstId = $control->id;
@@ -78,12 +65,11 @@ class Combo extends Control
             },
             $this->comboTemplate
         );
-
-        $props = $this->props;
-        $props['attribsLabel']['for'] = $firstId;
-        $props['input'] = $inputs;
+        $this->props['attribsLabel']['for'] = $firstId;
+        $this->props['input'] = $inputs;
+        $return = $this->build();
         $this->debug->groupEnd();
-        return $controlBuilder->build($props);
+        return $return;
     }
 
     /**
@@ -95,8 +81,7 @@ class Combo extends Control
      */
     public function getValRaw(Control $control)
     {
-        $debug = \bdk\Debug::getInstance();
-        $debug->warn('getValRaw');
+        \bdk\Debug::_warn('getValRaw');
         $nameBase = $control->attribs['name'];
         $val = $control->form->getValue($nameBase.'A')
             .'-'
@@ -104,16 +89,47 @@ class Combo extends Control
         return $val;
     }
 
-    public static function onBuildControl(Event $event)
+    /**
+     * form.buildControl event subscriber
+     *
+     * @param Event $event Event instance
+     *
+     * @return void
+     */
+    public static function onBuildControlBefore(Event $event)
     {
-        // \bdk\Debug::_warn(__METHOD__, $event->getSubject()->attribs['name']);
+        // \bdk\Debug::_info('definition', $event->getSubject()->definition);
+        if ($event->getSubject() instanceof self) {
+            \preg_match_all('/{{\s*(.*?)\s*}}/', $event->getSubject()->comboTemplate, $matches);
+            self::$allow = \array_merge(self::$allow, $matches[1]);
+        }
+    }
+
+    /**
+     * form.buildControl event subscriber
+     *
+     * @param Event $event Event instance
+     *
+     * @return void
+     */
+    public static function onBuildControlAfter(Event $event)
+    {
+        $name = $event->getSubject()->attribs['name'];
+        if (\in_array($name, self::$comboed)) {
+            if (\in_array($name, self::$allow)) {
+                $key = \array_search($name, self::$allow);
+                unset(self::$allow[$key]);
+            } else {
+                $event['return'] = '';
+            }
+        }
     }
 
     /**
      * [setValRaw description]
      *
      * @param Control $control control instance
-     * @param mixed   $value control's value
+     * @param mixed   $value   control's value
      *
      * @return void
      */
@@ -123,5 +139,18 @@ class Combo extends Control
         $nameBase = $control->attribs['name'];
         $control->form->setValue($nameBase.'A', $valA);
         $control->form->setValue($nameBase.'B', $valB);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDefaultProps($type)
+    {
+        return array(
+            'attribsControls' =>array(
+                'class' => 'form-inline',
+            ),
+            'comboTemplate' => '',
+        );
     }
 }

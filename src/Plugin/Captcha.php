@@ -2,121 +2,156 @@
 
 namespace bdk\Form\Plugin;
 
-use bdk\Session;
+use bdk\Form;
+use bdk\Form\Control;
+use bdk\Html;
 
 /**
  * Captcha
  */
 class Captcha
 {
-    public $font = 'monofont.ttf';
+    // public $font = 'monofont.ttf';
     // var $font = 'bennyb.ttf';
-    public $font_scale = 0.75;      // default 0.75;    % the image height
-    public $dot_divisor = 3;        // default 3;       higher # less dots;
-    public $line_divisor = 150;     // default 150;
-    public $length = 5;
+    public $cfg = array(
+        'code' => null,
+        'dotDivisor' => 3,        // higher # less dots;
+        'font' => 'monofont.ttf',
+        'fontScale' => 0.75,      // % the image height
+        'height' => 40,
+        'length' => 5,
+        'lineDivisor' => 150,
+        'width' => 120,
+    );
+    public $form;
 
     /**
      * Constructor
      *
-     * @param array $cfg config options
+     * @param Form  $form form instance
+     * @param array $cfg  config options
      */
-    public function __construct($cfg = array())
+    public function __construct(Form $form, $cfg = array())
     {
-        Session::start();
-        foreach ($cfg as $k => $v) {
-            $this->cfg[$k] = $v;
-        }
-        if (\file_exists(__DIR__.'/'.$this->font)) {
-            $this->font = __DIR__.'/'.$this->font;
+        $this->form = $form;
+        $this->cfg = \array_merge($this->cfg, $cfg);
+        if (!\file_exists($this->cfg['font']) && \file_exists(__DIR__.'/'.$this->cfg['font'])) {
+            $this->cfg['font'] = __DIR__.'/'.$this->cfg['font'];
         }
     }
 
     /**
-     * Generate code
+     * Generates image and stores in form's persist data
      *
-     * @param integer $length number of characters in generated code
-     *
-     * @return string
+     * @return string hash of image
      */
-    public function generateCode($length)
+    public function generateImage()
     {
-        if (isset($_SESSION['captcha_code'])) {
-            $code = $_SESSION['captcha_code'];
-        } else {
-            // list all possible characters, similar looking characters and vowels have been removed
-            $possible = '23456789bcdfghjkmnpqrstvwxyz';
-            $code = '';
-            for ($i=0; $i < $length; $i++) {
-                $code .= \substr($possible, \mt_rand(0, \strlen($possible)-1), 1);
-            }
-            $_SESSION['captcha_code'] = $code;
-        }
-        return $code;
-    }
-
-    /**
-     * Outputs image and appropriate headers
-     *
-     * @param array $params width, height, & length
-     *
-     * @return void
-     */
-    public function outputImage($params = array())
-    {
-        $param_defaults = array(
-            'width' => 120,
-            'height' => 40,
-            // 'length' => 6
-        );
-        $params = \array_merge($param_defaults, $params);
-        $code = $this->generateCode($this->length);
-        $font_size = $params['height'] * $this->font_scale;
-        $image = @\imagecreate($params['width'], $params['height']) or die('Cannot initialize new GD image stream');
+        $code = $this->getCode();
+        $fontSize = $this->cfg['height'] * $this->cfg['fontScale'];
+        $image = \imagecreate($this->cfg['width'], $this->cfg['height']);
         // set the colors
-        $color_bkg = \imagecolorallocate($image, 0, 0, 0);
-        // $color_text = imagecolorallocate($image, 20, 40, 100);
-        $color_text = \imagecolorallocate($image, 200, 200, 200);
-        $color_noise = \imagecolorallocate($image, 150, 150, 150);
+        \imagecolorallocate($image, 0, 0, 0); // background color
+        $colorText = \imagecolorallocate($image, 200, 200, 200);
+        $colorNoise = \imagecolorallocate($image, 150, 150, 150);
+        $area = $this->cfg['width']*$this->cfg['height'];
         // generate random dots in background
-        for ($i=0; $i<($params['width']*$params['height'])/$this->dot_divisor; $i++) {
-            \imagefilledellipse($image, \mt_rand(0, $params['width']), \mt_rand(0, $params['height']), 1, 1, $color_noise);
+        for ($i=0; $i < $area / $this->cfg['dotDivisor']; $i++) {
+            \imagefilledellipse(
+                $image,
+                \mt_rand(0, $this->cfg['width']),   // center x
+                \mt_rand(0, $this->cfg['height']),  // center y
+                1,                                  // width
+                1,                                  // height
+                $colorNoise
+            );
         }
         // generate random lines in background
-        for ($i=0; $i<($params['width']*$params['height'])/$this->line_divisor; $i++) {
-            \imageline($image, \mt_rand(0, $params['width']), \mt_rand(0, $params['height']), \mt_rand(0, $params['width']), \mt_rand(0, $params['height']), $color_noise);
+        for ($i=0; $i < $area / $this->cfg['lineDivisor']; $i++) {
+            \imageline(
+                $image,
+                \mt_rand(0, $this->cfg['width']),  // start x
+                \mt_rand(0, $this->cfg['height']), // start y
+                \mt_rand(0, $this->cfg['width']),  // end x
+                \mt_rand(0, $this->cfg['height']), // end y
+                $colorNoise
+            );
         }
         // create textbox and add text
-        $textbox = \imagettfbbox($font_size, 0, $this->font, $code); // or die('Error in imagettfbbox function');
-        $x = ($params['width'] - $textbox[4])/2;
-        $y = ($params['height'] - $textbox[5])/2;
-        \imagettftext($image, $font_size, 0, $x, $y, $color_text, $this->font, $code); // or die('Error in imagettftext function');
+        $textbox = \imagettfbbox($fontSize, 0, $this->cfg['font'], $code);
+        $baseX = ($this->cfg['width'] - $textbox[4])/2;
+        $baseY = ($this->cfg['height'] - $textbox[5])/2;
+        \imagettftext($image, $fontSize, 0, $baseX, $baseY, $colorText, $this->cfg['font'], $code);
         // output captcha image to browser
-        \header('Last-Modified: '.\date('r'));
-        \header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
-        \header("Expires: Mon, 26 Jul 1997 05:00:00 GMT"); // Date in the past
-        \header('Content-Type: image/jpeg');
-        \header('Pragma: no-cache');
+        \ob_start();
         \imagejpeg($image);
+        $data = \ob_get_clean();
+        $hash = $this->form->asset(array(
+            'data' => $data,
+            'headers' => array(
+                'Last-Modified' => \date('r'),
+                'Cache-Control' => 'no-cache, must-revalidate', // HTTP/1.1
+                'Expires' =>  'Mon, 26 Jul 1997 05:00:00 GMT', // Date in the past
+                'Content-Type' => 'image/jpeg',
+                'Pragma' => 'no-cache',
+            )
+        ));
         \imagedestroy($image);
+        return $hash;
+    }
+
+    /**
+     * Generate & return <img> tag
+     *
+     * @return [type] [description]
+     */
+    public function output()
+    {
+        $url = $this->generateImage();
+        return Html::buildTag(
+            'img',
+            array(
+                'width' => $this->cfg['width'],
+                'height' => $this->cfg['height'],
+                'border' => 0,
+                'src' => $url,
+                'alt' => '',
+            )
+        );
     }
 
     /**
      * verify if passed string is the captcha code
      *
-     * @param string $str test string
+     * @param Control $control Control instance
      *
      * @return bean
      */
-    public function verify($str)
+    public function validate(Control $control)
     {
-        $return = false;
-        if (isset($_SESSION['captcha_code'])) {
-            // debug('captcha_code', $_SESSION['captcha_code']);
-            if ($str == $_SESSION['captcha_code']) {
-                $return = true;
-            }
+        return $control->val() == $this->getCode();
+    }
+
+    /**
+     * Generate code
+     *
+     * @return string
+     */
+    protected function getCode()
+    {
+        $code = $this->form->persist->get('global/captchaCode');
+        if ($code && !$this->form->status['submitted']) {
+            $code = null;
         }
-        return $return;
+        if (!$code) {
+            $code = '';
+            // list all possible characters, similar looking characters and vowels have been removed
+            $possible = '23456789bcdfghjkmnpqrstvwxyz';
+            for ($i=0; $i < $this->cfg['length']; $i++) {
+                $code .= \substr($possible, \mt_rand(0, \strlen($possible)-1), 1);
+            }
+            $this->form->persist->set('global/captchaCode', $code);
+        }
+        return $code;
     }
 }
