@@ -77,7 +77,7 @@ class Output
                 array(
                     'output' => $strAlerts
                         .$this->buildHiddenControls()
-                        .$this->form->buildOutput(),
+                        .$this->buildOutput(),
                 )
             )->getValue('output');
             if ($cfg['output']['formWrap']) {
@@ -117,6 +117,23 @@ class Output
      * @return string html
      */
     public function buildOutput()
+    {
+        $this->debug->groupCollapsed(__METHOD__);
+        $this->debug->groupUncollapse();
+        $html = $this->form->buildOutput();
+        if (!$html) {
+            $html = $this->buildOutputDefault();
+        }
+        $this->debug->groupEnd();
+        return $html;
+    }
+
+    /**
+     * Default controls builder
+     *
+     * @return string html
+     */
+    public function buildOutputDefault()
     {
         $this->debug->groupCollapsed(__METHOD__);
         $this->debug->groupUncollapse();

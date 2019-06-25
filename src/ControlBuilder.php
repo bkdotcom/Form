@@ -222,14 +222,12 @@ class ControlBuilder
                 each option may contain value and attributes
                 may also pass values array to specify initially checked values
             a single checkbox may be specified by setting
-                label the checkbox's label
-                value (the value attribute)
-                checked (boolean - whether or not initially checked)
+                label : the checkbox's label
+                value : (the value attribute)
+                checked : (boolean) whether or not initially checked
         */
-        if (\count($this->props['options']) > 1) {
-            if (\substr($this->props['attribs']['name'], -2) !== '[]') {
-                $this->props['attribs']['name'] .= '[]';
-            }
+        if (\count($this->props['options']) > 1 && \substr($this->props['attribs']['name'], -2) !== '[]') {
+            $this->props['attribs']['name'] .= '[]';
         }
         if ($this->props['useFieldset'] === 'auto') {
             $this->props['useFieldset'] = \count($this->props['options']) > 1 || $this->props['label'];
@@ -267,11 +265,11 @@ class ControlBuilder
             ? (array) $props['attribs']['value']
             : $props['values'];
         $isMultiple = \count($props['options']) > 1;
+        $groupAttribs = \array_diff_key($props['attribs'], \array_flip(array('required')));
         foreach ($props['options'] as $i => $optProps) {
-            // unset($optProps['attribs']['tagname']);
             $optProps = $this->control->mergeProps(array(
                 array(
-                    'attribs' => $props['attribs'], // name, type, & other "global" attributes
+                    'attribs' => $groupAttribs,
                 ),
                 array(
                     'attribs' => array(
@@ -336,13 +334,13 @@ class ControlBuilder
             return $props['input'];
         }
         if ($props['addonBefore']) {
-            $addonClass = \preg_match('#<(a|button)\b#i', $props['addonBefore'])
+            $addonClass = \preg_match('#<(a|button|select)\b#i', $props['addonBefore'])
                 ? 'input-group-btn'
                 : 'input-group-addon';
             $props['addonBefore'] = '<span class="'.$addonClass.'">'.$props['addonBefore'].'</span>';
         }
         if ($props['addonAfter']) {
-            $addonClass = \preg_match('#<(a|button)\b#i', $props['addonAfter'])
+            $addonClass = \preg_match('#<(a|button|select)\b#i', $props['addonAfter'])
                 ? 'input-group-btn'
                 : 'input-group-addon';
             $props['addonAfter'] = '<span class="'.$addonClass.'">'.$props['addonAfter'].'</span>';
@@ -408,7 +406,9 @@ class ControlBuilder
                 If no empty option, add one
             */
             $optKeys = \array_keys($this->props['options']);
-            $firstValue = $this->props['options'][$optKeys[0]]['attribs']['value'];
+            $firstValue = $optKeys
+                ? $this->props['options'][$optKeys[0]]['attribs']['value']
+                : null;
             if (!\in_array(\strtolower($firstValue), array('','--','select'))) {
                 $selectOption = array(
                     'attribs' => array(

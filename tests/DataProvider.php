@@ -769,6 +769,7 @@ class DataProvider
                     'value' => array('Hammer', 'Stick'),
                     'options' => array('Hammer', 'Banana', 'Pillow', 'Desk', 'Stick'),
                     'label' => 'Multiple already selected',
+                    'required' => true,
                 ),
                 '<fieldset class="form-group" id="unittest_things_3_container">
 	                <legend>Multiple already selected</legend>

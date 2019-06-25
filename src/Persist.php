@@ -65,7 +65,7 @@ class Persist
      */
     public function __isset($key)
     {
-        return isset($this->data[$key]) || isset($this->data['persist'][$key]);
+        return isset($this->formData[$key]) || isset($this->formData['persist'][$key]);
     }
 
     /**
@@ -133,7 +133,7 @@ class Persist
                             return $i;
                         }
                     }
-                } elseif (isset($return[$key])) {
+                } elseif (\array_key_exists($key, $return)) {
                     $return = $return[$key];
                 } elseif (isset($return['persist'][$key])) {
                     $return = $return['persist'][$key];
@@ -158,8 +158,11 @@ class Persist
             $this->debug->info('data['.$formName.'] exists');
             $this->formData = &$this->data[$formName];
             $this->formData['timestamp'] = \microtime(true);
-            if ($this->formData['submitted']) {
+            $this->formData['submitted'] = false;
+            if ($this->formData['PRGState'] === 'R') {
                 $this->debug->log('submitted... came from redirect');
+                $this->formData['PRGState'] = 'G';
+                $this->formData['submitted'] = true;
             } else {
                 $isSubmitted = true;
                 if ($this->cfg['verifyKey']) {
@@ -191,6 +194,7 @@ class Persist
                     */
                 ),
                 'i'         => 0,       // index to current page in pages
+                'PRGState' => null,     // P, R, or G
                 'submitted' => false,
                 'key'       => \md5(\uniqid(\rand(), true)),
                 'persist'   => $this->cfg['persist'],
@@ -270,9 +274,10 @@ class Persist
                     $pointer = &$this->data['global'];
                 } elseif ($key == 'currentPage') {
                     $pointer = &$pointer['pages'][ $this->data['i'] ];
-                } elseif (isset($pointer[$key])) {
+                } elseif (\array_key_exists($key, $pointer)) {
                     $pointer = &$pointer[$key];
                 } else {
+                    // unknown first level key -> treat as generit persist val
                     if (!isset($pointer['persist'][$key])) {
                         $pointer['persist'][$key] = null;
                     }
@@ -382,11 +387,13 @@ class Persist
             if (isset($userI)) {
                 $this->data['i'] = $userI;
             }
-        } else {
+        } elseif ($userKey) {
             $this->debug->info('keys don\'t match.. perhaps different form', array(
                 'userKey' => $userKey,
                 'persistKey' => $this->get('key'),
             ));
+        } else {
+            $this->debug->info('No user key supplied / not submitted');
         }
         return $return;
     }

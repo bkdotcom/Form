@@ -115,7 +115,7 @@ class ControlFactory
         'password' => array(
             'attribs' => array(
                 'autocapitalize' => 'none',
-                'autocomplete' => 'off',        // see also:  "current-password" & "new-password"
+                'autocomplete' => 'off',
                 'autocorrect' => 'off',
                 // 'data-lpignore'  => true,    // no LastPass icon
             ),

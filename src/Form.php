@@ -223,6 +223,8 @@ class Form
     /**
      * Extend me for custom output, or set cfg['buildOutput'] to a callable
      *
+     * If nothing is returned, default output will be used
+     *
      * @return string
      */
     public function buildOutput()
@@ -232,7 +234,7 @@ class Form
             $html = \call_user_func($this->cfg['buildOutput'], $this->form);
         }
         if (!$html) {
-            $html = $this->output->buildOutput();
+            $html = $this->output->buildOutputDefault();
         }
         return $html;
     }
@@ -373,7 +375,6 @@ class Form
                 \header($header);
             }
         }
-        $this->persist->set('submitted', false);
         $this->debug->groupEnd();
         return;
     }
@@ -747,12 +748,11 @@ class Form
      *
      * @param string $location redirect url
      *
-     * @return void [description]
+     * @return void
      */
     protected function onRedirect($location)
     {
         $this->debug->warn('onRedirect', $location);
-        // $this->debug->alert('<i class="fa fa-external-link fa-lg" aria-hidden="true"></i> Location: <a class="alert-link" href="'.\htmlspecialchars($location).'">'.\htmlspecialchars($location).'</a>', 'info');
         $this->debug->log('%cRedirect%c location: <a href="%s">%s</a>', 'font-weight:bold;', '', $location, $location);
         \header('Location: '.$location);
         exit;
@@ -974,6 +974,7 @@ class Form
         /*
             Subscribe to form.redirect to change location, or stop propagation
         */
+        $this->persist->set('PRGState', 'R');
         $event = $this->eventManager->publish(
             'form.redirect',
             $this,
@@ -1052,7 +1053,7 @@ class Form
                 */
             }
             $this->status['submitted'] = true;
-            $this->persist->set('submitted', true);
+            $this->persist->set('PRGState', 'P');
             $this->persist->set('currentPage.values', $values);
         } elseif (\strtolower($this->cfg['attribs']['method']) == 'get') {
             $this->debug->warn('storing GET vals');

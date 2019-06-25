@@ -653,7 +653,7 @@ class Control
         }
         foreach ($this->props['options'] as $key => $option) {
             if (!\is_array($option)) {
-                $this->props['options'][$key] = array(
+                $option = array(
                     'label' => $option,
                     'attribs' => array(
                         'value' => \is_string($key)
@@ -661,13 +661,16 @@ class Control
                             : $option,
                     ),
                 );
+                if ($key === 0 && \in_array(\strtolower($option['label']), array('--','select'))) {
+                    $option['attribs']['value'] = '';
+                }
             } else {
                 $option = $this->moveAttribs($option);
                 if (!isset($option['label']) && isset($option['attribs']['value'])) {
                     $option['label'] = $option['attribs']['value'];
                 }
-                $this->props['options'][$key] = $option;
             }
+            $this->props['options'][$key] = $option;
         }
         if (\in_array($type, array('checkbox','select')) && !$this->props['values']) {
             /*
