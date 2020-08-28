@@ -24,17 +24,14 @@ class ControlBuilder
     /**
      * Constructor
      *
-     * @param ControlFactory|array $defaultProps        ControlFactory or default properties
-     * @param array                $defaultPropsPerType Per-type control properties
+     * @param ControlFactory|array $ctrlFctryOrCfg ControlFactory or default properties
      */
-    public function __construct($defaultProps = array(), $defaultPropsPerType = array())
+    public function __construct($ctrlFctryOrCfg = array())
     {
         $this->eventManager = new EventManager();
-        if ($defaultProps instanceof ControlFactory) {
-            $this->controlFactory = $defaultProps;
-        } else {
-            $this->controlFactory = new ControlFactory(null, $defaultProps, $defaultPropsPerType);
-        }
+        $this->controlFactory = $ctrlFctryOrCfg instanceof ControlFactory
+            ? $ctrlFctryOrCfg
+            : new ControlFactory(null, $ctrlFctryOrCfg);
         $this->eventManager->subscribe('form.buildControl', array($this, 'onBuildControl'));
     }
 
@@ -47,14 +44,13 @@ class ControlBuilder
      */
     public function build($control)
     {
-        \bdk\Debug::_groupCollapsed(__METHOD__, \is_array($control) ? $control : $control->type.': '.$control->name);
+        \bdk\Debug::_groupCollapsed(__METHOD__, \is_array($control) ? $control : $control->type . ': ' . $control->name);
         $return = '';
         if (\is_array($control)) {
             $control = $this->controlFactory->build($control);
         }
         $this->control = $control;
         $this->props = $control->props;
-
         $id = $control->getId();
         $isBuilding = \in_array($id, $this->building);
         $uniqueId = $control->getUniqueId(!$isBuilding);
@@ -153,12 +149,12 @@ class ControlBuilder
             $this->classAdd($this->props['attribsContainer'], 'required');
         }
         if (!$this->props['isValid']) {
-            $this->classAdd($this->props['attribsContainer'], 'has-error');
+            $this->classAdd($this->props['attribsContainer'], 'has-error');  // bootstrap 3
             if ($this->props['invalidReason']) {
                 $this->props['helpBlock'] = $this->props['invalidReason'];
             }
         } else {
-            $this->classRemove($this->props['attribsContainer'], 'has-error');
+            $this->classRemove($this->props['attribsContainer'], 'has-error'); // bootstrap 3
         }
         if ($this->props['helpBlock']) {
             // we don't want aria-describedby attrib when tagOnly
@@ -234,7 +230,7 @@ class ControlBuilder
         }
         if ($this->props['useFieldset']) {
             $this->props['template'] = \preg_replace('#^<div([^>]*)>(.+)</div>$#s', '<fieldset$1>$2</fieldset>', $this->props['template']);
-            $this->props['template'] = \preg_replace('#<label([^>]*)>(.+)</label>#s', '<legend>$2</legend>', $this->props['template']);
+            $this->props['template'] = \preg_replace('#<label([^>]*)>(.+)</label>#s', '<legend {{attribsLegend}}>$2</legend>', $this->props['template']);
         }
         $attribStrings = $this->buildAttribStrings($this->props);
         $props = \array_merge($this->props, $attribStrings);
@@ -255,47 +251,46 @@ class ControlBuilder
     {
         $optHtml = '';
         $props = &$this->props;
-        $optTemplate = '<div {{attribsPair}}>'
-            .'<label {{attribsLabel}}>'
-                .'{{input}}'
-                .'{{label}}'
-            .'</label>'
-            .'</div>'."\n";
         $values = $props['attribs']['type'] == 'radio'
             ? (array) $props['attribs']['value']
             : $props['values'];
+        $attribs = \array_diff_key($props['attribs'], \array_flip(array('required')));
+        $attribsLabel = \array_intersect_key($props['attribsLabel'], \array_flip(array('class')));
         $isMultiple = \count($props['options']) > 1;
-        $groupAttribs = \array_diff_key($props['attribs'], \array_flip(array('required')));
+        $nestedLabel = \preg_match('#label.+input.+label#s', $props['inputLabelTemplate']);
         foreach ($props['options'] as $i => $optProps) {
             $optProps = $this->control->mergeProps(array(
                 array(
-                    'attribs' => $groupAttribs,
+                    'attribs' => $attribs,
+                    'attribsInputLabel' => $props['attribsInputLabel'],
+                    'attribsLabel' => $attribsLabel,
                 ),
                 array(
                     'attribs' => array(
                         'checked' => \in_array($optProps['attribs']['value'], $values),
                     ),
-                    'attribsLabel' => array(),
-                    'attribsPair' => array( 'class' => $props['attribs']['type'] ),
                 ),
                 $optProps,
                 array(
                     'attribs' => array(
                         'id' => $props['attribs']['id']
-                            ? $props['attribs']['id'].($isMultiple ? '_'.($i+1) : '')
+                            ? $props['attribs']['id'] . ($isMultiple ? '_' . ($i + 1) : '')
                             : null,
                     ),
                 ),
             ));
+            if (!$nestedLabel && empty($optProps['attribsLabel']['for'])) {
+                $optProps['attribsLabel']['for'] = $optProps['attribs']['id'];
+            }
             if (!empty($optProps['attribs']['disabled'])) {
-                $this->classAdd($optProps['attribsPair'], 'disabled');
+                $this->classAdd($optProps['attribsInputLabel'], 'disabled');
             }
             $attribStrings = $this->buildAttribStrings($optProps);
-            $optProps['input'] = '<input '.$attribStrings['attribs'].' />';
+            $optProps['input'] = '<input ' . $attribStrings['attribs'] . ' />';
             $props['options'][$i] = $optProps;
             $optProps = \array_merge($optProps, $attribStrings);
             $optProps['label'] = \htmlspecialchars($optProps['label']);
-            $optHtml .= Str::quickTemp($optTemplate, $optProps);
+            $optHtml .= Str::quickTemp($props['inputLabelTemplate'], $optProps);
         }
         return $optHtml;
     }
@@ -323,6 +318,9 @@ class ControlBuilder
      * Handles pressence of addonAfter or addonBefore
      *
      * @return string html
+     *
+     * @see https://getbootstrap.com/docs/3.4/components/#input-groups
+     * @see https://getbootstrap.com/docs/4.3/components/input-group/
      */
     protected function buildInputGroup()
     {
@@ -333,18 +331,10 @@ class ControlBuilder
         if (!$props['addonBefore'] && !$props['addonAfter']) {
             return $props['input'];
         }
-        if ($props['addonBefore']) {
-            $addonClass = \preg_match('#<(a|button|select)\b#i', $props['addonBefore'])
-                ? 'input-group-btn'
-                : 'input-group-addon';
-            $props['addonBefore'] = '<span class="'.$addonClass.'">'.$props['addonBefore'].'</span>';
+        if (isset($this->controlFactory->cfg['theme']['onBuildInputGroup']) && \is_callable($this->controlFactory->cfg['theme']['onBuildInputGroup'])) {
+            $props = $this->controlFactory->cfg['theme']['onBuildInputGroup']($props);
         }
-        if ($props['addonAfter']) {
-            $addonClass = \preg_match('#<(a|button|select)\b#i', $props['addonAfter'])
-                ? 'input-group-btn'
-                : 'input-group-addon';
-            $props['addonAfter'] = '<span class="'.$addonClass.'">'.$props['addonAfter'].'</span>';
-        }
+        /*
         // since default attribsInputGroup didn't exist it's a bit cumbersome to merge here
         $propsInputGroup = $this->control->mergeProps(array(
             array(
@@ -357,11 +347,12 @@ class ControlBuilder
             ),
         ));
         $attribsInputGroup = $propsInputGroup['attribs'];
-        return '<div'.Html::buildAttribString($attribsInputGroup).'>'."\n"
-                .$props['addonBefore']."\n"
-                .$props['input']."\n"
-                .$props['addonAfter']."\n"
-            .'</div>';
+        */
+        return '<div' . Html::buildAttribString($props['attribsInputGroup']) . '>' . "\n"
+                . $props['addonBefore'] . "\n"
+                . $props['input'] . "\n"
+                . $props['addonAfter'] . "\n"
+            . '</div>';
     }
 
     /**
@@ -374,7 +365,7 @@ class ControlBuilder
         if ($this->props['useFieldset']) {
             // 'auto' || true
             $this->props['template'] = \preg_replace('#^<div([^>]*)>(.+)</div>$#s', '<fieldset$1>$2</fieldset>', $this->props['template']);
-            $this->props['template'] = \preg_replace('#<label([^>]*)>(.+)</label>#s', '<legend>$2</legend>', $this->props['template']);
+            $this->props['template'] = \preg_replace('#<label([^>]*)>(.+)</label>#s', '<legend {{attribsLegend}}>$2</legend>', $this->props['template']);
         }
         $attribStrings = $this->buildAttribStrings($this->props);
         $props = \array_merge($this->props, $attribStrings);
@@ -396,7 +387,8 @@ class ControlBuilder
         if (!empty($this->props['attribs']['multiple']) && \substr($this->props['attribs']['name'], -2) !== '[]') {
             $this->props['attribs']['name'] .= '[]';
         }
-        if ($this->props['addSelectOpt']
+        if (
+            $this->props['addSelectOpt']
             && !$this->props['attribs']['multiple']
             // && !$this->props['values']
             // && $this->props['options']
@@ -406,7 +398,7 @@ class ControlBuilder
                 If no empty option, add one
             */
             $optKeys = \array_keys($this->props['options']);
-            $firstValue = $optKeys
+            $firstValue = $optKeys && isset($this->props['options'][$optKeys[0]]['attribs']['value'])
                 ? $this->props['options'][$optKeys[0]]['attribs']['value']
                 : null;
             if (!\in_array(\strtolower($firstValue), array('','--','select'))) {
@@ -429,7 +421,7 @@ class ControlBuilder
             $this->props['input'] = Html::buildTag(
                 $props['tagname'],
                 $props['attribs'],
-                "\n".$this->buildSelectOptions($this->props['options'], $this->props['values'])
+                "\n" . $this->buildSelectOptions($this->props['options'], $this->props['values'])
             );
             $props['input'] = $this->buildInputGroup();
         }
@@ -454,14 +446,14 @@ class ControlBuilder
             // $str = '';
             if (isset($opt['optgroup'])) {
                 if ($inOptgroup) {
-                    $str .= '</optgroup>'."\n";
+                    $str .= '</optgroup>' . "\n";
                     $inOptgroup = false;
                 }
                 if ($opt['optgroup']) {
                     // open an optgroup
                     $attribs = $opt['attribs'];
                     $attribs['label'] = $opt['label'];
-                    $str .= '<optgroup'.Html::buildAttribString($attribs).'>'."\n";
+                    $str .= '<optgroup' . Html::buildAttribString($attribs) . '>' . "\n";
                     $inOptgroup = true;
                 }
             } else {
@@ -471,13 +463,13 @@ class ControlBuilder
                     'selected' => \in_array($opt['attribs']['value'], $selectedValues),
                 ), $opt['attribs']);
                 // unset($optAttribs['label']);
-                $str .= Html::buildTag('option', $optAttribs, \htmlspecialchars($opt['label']))."\n";
+                $str .= Html::buildTag('option', $optAttribs, \htmlspecialchars($opt['label'])) . "\n";
             }
             // $this->props['attribs']['innerhtml'] .= $str;
         }
         if ($inOptgroup) {
             // $this->props['attribs']['innerhtml'] .= '</optgroup>';
-            $str .= '</optgroup>'."\n";
+            $str .= '</optgroup>' . "\n";
         }
         return $str;
     }
@@ -609,7 +601,7 @@ class ControlBuilder
             array(
                 'attribsContainer' => array(
                     // 'class' => $this->props['attribsContainer']['class'],
-                    'id' => $id.'_container',
+                    'id' => $id . '_container',
                 ),
                 'attribs' => array(
                     // 'class' => $this->props['attribs']['class'],
@@ -623,7 +615,7 @@ class ControlBuilder
                 ),
                 'attribsHelpBlock' => array(
                     // 'class' => $this->props['attribsHelpBlock']['class'],
-                    'id' => $id.'_help_block',
+                    'id' => $id . '_help_block',
                 ),
             ),
         ));

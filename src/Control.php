@@ -16,6 +16,7 @@ class Control
     protected $callStack = array();
     protected $props = array();
     protected $propKeys = array();
+    protected $isConstructed = false;
 
     /**
      * @var $idCounts keep track of ids generated across all forms
@@ -36,6 +37,7 @@ class Control
         $this->controlFactory = $controlFactory;
         $this->form = $form;
         $this->setProps($props);
+        $this->isConstructed = true;
     }
 
     /**
@@ -48,8 +50,8 @@ class Control
      */
     public function __get($key)
     {
-        if (\method_exists($this, 'get'.\ucfirst($key))) {
-            $method = 'get'.\ucfirst($key);
+        if (\method_exists($this, 'get' . \ucfirst($key))) {
+            $method = 'get' . \ucfirst($key);
             return $this->{$method}();
         } elseif (\array_key_exists($key, $this->props['attribs'])) {
             return $this->props['attribs'][$key];
@@ -96,6 +98,18 @@ class Control
     }
 
     /**
+     * toString magic method
+     *
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->isConstructed
+            ? $this->controlFactory->controlBuilder->build($this)
+            : 'building...';
+    }
+
+    /**
      * Build html control
      *
      * @param array $propOverride properties to override
@@ -119,15 +133,30 @@ class Control
             ));
         }
         // $this->debug->log('build props', $this->props);
-        $return = $this->controlFactory->controlBuilder->build($this);
-        return $return;
+        return $this->controlFactory->controlBuilder->build($this);
     }
 
+    /**
+     * Add class name(s) to attributes
+     *
+     * @param array|string $attribs    attributes
+     * @param array|string $classNames classname(s) to add
+     *
+     * @return void
+     */
     public static function classAdd(&$attribs, $classNames)
     {
         ControlBuilder::classAdd($attribs, $classNames);
     }
 
+    /**
+     * Remove class name(s) from attributes
+     *
+     * @param array|string $attribs    attributes
+     * @param array|string $classNames classname(s) to add
+     *
+     * @return void
+     */
     public static function classRemove(&$attribs, $classNames)
     {
         ControlBuilder::classRemove($attribs, $classNames);
@@ -220,14 +249,14 @@ class Control
         $repChar = '_'; // replace \W with this char
         if (!$id && $this->props['attribs']['name']) {
             $id = \preg_replace('/\W/', $repChar, $this->props['attribs']['name']);
-            $id = \preg_replace('/'.$repChar.'+/', $repChar, $id);
+            $id = \preg_replace('/' . $repChar . '+/', $repChar, $id);
             $id = \trim($id, $repChar);
             if ($id && $this->props['idPrefix']) {
                 $prefix = $this->props['idPrefix'];
                 if (\preg_match('/[a-z]$/i', $prefix)) {
-                    $prefix = $prefix.$sepChar;
+                    $prefix = $prefix . $sepChar;
                 }
-                $id = $prefix.$id;
+                $id = $prefix . $id;
             }
             if ($id) {
                 $this->props['attribs']['id'] = $id;
@@ -255,7 +284,7 @@ class Control
                     self::$idCounts[$id] ++;
                 }
                 if (self::$idCounts[$id] > 1) {
-                    $id .= $sepChar.self::$idCounts[$id];
+                    $id .= $sepChar . self::$idCounts[$id];
                 }
             } else {
                 self::$idCounts[$id] = 1;
@@ -274,7 +303,7 @@ class Control
         $isRequired = $this->attribs['required'];
         if (\is_string($isRequired)) {
             $replaced = \preg_replace('/{{(.*?)}}/', '$this->form->getControl("$1")->val()', $isRequired);
-            $evalString = '$isRequired = (bool) '.$replaced.';';
+            $evalString = '$isRequired = (bool) ' . $replaced . ';';
             eval($evalString);
         }
         return $isRequired;
@@ -298,7 +327,7 @@ class Control
         while ($mergeStack) {
             $props = \array_shift($mergeStack);
             $props = $this->moveAttribs($props);
-            $props = self::mergeClassesPrep($merged, $props, !$mergeStack);
+            self::mergeClassesPrep($merged, $props, !$mergeStack);
             $merged = ArrayUtil::mergeDeep($merged, $props, $options);
         }
 
@@ -376,11 +405,9 @@ class Control
 
     protected function getDefaultProps($type)
     {
-        $propsDefaultType = array();
-        if (isset($this->controlFactory->defaultPropsPerType[$type])) {
-            $propsDefaultType = $this->controlFactory->defaultPropsPerType[$type];
-        }
-        return $propsDefaultType;
+        return isset($this->controlFactory->defaultProps[$type])
+            ? $this->controlFactory->defaultProps[$type]
+            : array();
     }
 
     /**
@@ -408,20 +435,29 @@ class Control
         $propsDefault = array();
         $propsDefaultType = array();
         if ($isTypeChanging) {
-            $propsDefault = $this->props ?: $this->controlFactory->defaultProps;
+            $propsDefault = $this->props ?: $this->controlFactory->defaultProps['default'];
             $propsDefaultType = $this->getDefaultProps($type);
             if ($type == 'submit' && empty($props['label']) && !empty($props['attribs']['value'])) {
                 $props['label'] = $props['attribs']['value'];
             }
             $this->setPropKeys($type);
         }
+        /*
+        $this->debug->warn(array(
+            'this->props' => $this->props,
+            'propsDefault' => $propsDefault,
+            'propsDefaultType' => $propsDefaultType,
+            'props' => $props,
+        ));
+        */
         $this->props = $this->mergeProps(array(
             $propsDefault,
             $propsDefaultType,
             $props,
         ));
-        if (empty($this->props['attribs']['x-moz-errormessage']) && !empty($this->props['invalidReason'])) {
-            $this->props['attribs']['x-moz-errormessage'] = $this->props['invalidReason'];
+        // Firefox 66 has dropped the support for the non-standard x-moz-errormessage
+        if (empty($this->props['attribs']['data-errormessage']) && !empty($this->props['invalidReason'])) {
+            $this->props['attribs']['data-errormessage'] = $this->props['invalidReason'];
         }
         foreach (\array_keys($this->props) as $k) {
             if (\strpos($k, 'attribs') === 0) {
@@ -444,7 +480,7 @@ class Control
      */
     private function setPropKeys($type)
     {
-        $propsDefault = $this->controlFactory->defaultProps;
+        $propsDefault = $this->controlFactory->defaultProps['default'];
         $propsDefault += $this->getDefaultProps($type);
         $this->propKeys = \array_merge(
             $this->propKeys,
@@ -524,8 +560,12 @@ class Control
                 ? $this->props['values']
                 : $this->attribs['value'];
         }
-        if ($this->attribs['type'] == 'checkbox' && !$this->props['checkboxGroup']
-            || $this->attribs['type'] == 'select' && empty($this->attribs['multiple'])) {
+        if (
+            $this->attribs['type'] == 'checkbox'
+                && !$this->props['checkboxGroup']
+            || $this->attribs['type'] == 'select'
+                && empty($this->attribs['multiple'])
+        ) {
             $return = \array_pop($return);
         }
         return $return;
@@ -548,7 +588,7 @@ class Control
         } elseif (!empty($this->props['newPage'])) {
             $this->debug->log('not checking newPage');
         } elseif (\in_array($attribs['type'], array('file'))) {
-            $this->debug->log($attribs['name'].' is a file type');
+            $this->debug->log($attribs['name'] . ' is a file type');
             if ($this->isRequired() && empty($attribs['disabled']) && empty($attribs['value'])) {
                 $this->flag();
             }
@@ -578,7 +618,7 @@ class Control
      * classnames may be defined as:
      *      'string'                            (space separated classnames)
      *      array()                             (array -o- classnames)
-     *      array('string', 'merge'|'replace')
+     *      array('string', ..., 'merge'|'replace')
      *      array(array(), 'merge'|'replace')
      *      array(null, 'replace')
      *
@@ -586,9 +626,9 @@ class Control
      * @param array   $props                control properties
      * @param boolean $keepClassReplaceFlag should we retain merge/replace flag?
      *
-     * @return array
+     * @return void
      */
-    private static function mergeClassesPrep(&$propsDefault, $props, $keepClassReplaceFlag = false)
+    public static function mergeClassesPrep(&$propsDefault, &$props, $keepClassReplaceFlag = false)
     {
         foreach ($props as $k => $v) {
             if (!\is_array($v) || !\array_key_exists('class', $v)) {
@@ -602,7 +642,10 @@ class Control
                     $merge = $class[1] === 'merge';
                     $class = $class[0]; // string | array | null
                     if (!\is_array($class)) {
-                        $class = \array_filter(\explode(' ', $class), 'strlen');
+                        $class = \explode(' ', $class);
+                        if (!$keepClassReplaceFlag) {
+                            $class = \array_filter($class, 'strlen');
+                        }
                     }
                 } elseif (\count($class) > 2 && \in_array(\end($class), array('merge','replace'))) {
                     $merge = \end($class) === 'merge';
@@ -624,7 +667,6 @@ class Control
             }
             $props[$k]['class'] = $class;
         }
-        return $props;
     }
 
     /**
@@ -698,7 +740,7 @@ class Control
             if ($this->isRequired()) {
                 $this->flag();
             }
-        } elseif (isset($this->attribs['pattern']) && !\preg_match('/^'.\str_replace('/', '\/', $this->attribs['pattern']).'$/', $value)) {
+        } elseif (isset($this->attribs['pattern']) && !\preg_match('/^' . \str_replace('/', '\/', $this->attribs['pattern']) . '$/', $value)) {
             $this->debug->log('pattern mismatch');
             $this->flag('invalid format');
         } elseif (isset($this->attribs['max']) && \preg_replace('/[^-\d\.]/', '', $value) > $this->attribs['max']) {

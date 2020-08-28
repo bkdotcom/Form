@@ -26,7 +26,7 @@ class Dollar extends Control
             : null;
         return $val === null
             ? null
-            : '$'.\number_format($val, 2);
+            : '$' . \number_format($val, 2);
     }
 
     protected function getDefaultProps($type)
@@ -38,7 +38,9 @@ class Dollar extends Control
                 'size'          => 12,
                 'title'         => 'xxxx.xx',
             ),
-            'addonBefore'   => '<i class="glyphicon glyphicon-usd"></i>',
+            'addonBefore'   => $this->controlFactory->cfg['theme']['name'] == 'bootstrap3'
+                ? '<i class="glyphicon glyphicon-usd"></i>'
+                : '<i class="fa fa-usd"></i>',
             'invalidReason' => 'Should be in the form $xxxx.xx',
         );
     }

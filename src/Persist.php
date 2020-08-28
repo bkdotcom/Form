@@ -15,12 +15,12 @@ class Persist
     private $data = array();
     private $formData = array();    // pointer points to data[formName]
     private $cfg = array(
-        'formName'          => null,
+        'formName'          => '',
         'persist'           => array(), // values passed throughout form, similar to hidden controls, tamper resistant
         'rootKey'           => 'form_persist',
         'trashCollectable'  => true,    // should other forms be allowed to trash-collect this form
         'userKey'           => null,    // user supplied key
-        'verifyKey'         => true,
+        'verifyKey'         => false,
     );
 
     /**
@@ -32,6 +32,7 @@ class Persist
     {
         $this->debug = \bdk\Debug::getInstance();
         $this->debug->groupCollapsed(__METHOD__);
+        $this->debug->log('cfg', $cfg);
         $this->cfg = \array_merge($this->cfg, $cfg);
         Session::start();
         if (!isset($_SESSION[$this->cfg['rootKey']])) {
@@ -40,7 +41,8 @@ class Persist
             );
         }
         $this->data = &$_SESSION[$this->cfg['rootKey']];
-        $this->debug->log('data', $this->data);
+        // $this->debug->log('data', $this->data);
+        $this->init();
         $this->debug->groupEnd();
     }
 
@@ -95,7 +97,7 @@ class Persist
             $pageCount = \count($this->formData['pages']);
             $this->formData['pages'][$iCur]['addPages'] = \array_merge(
                 $this->formData['pages'][$iCur]['addPages'],
-                \range($pageCount, $pageCount+\count($pages)-1)
+                \range($pageCount, $pageCount + \count($pages) - 1)
             );
         }
         foreach ($pages as $pageName) {
@@ -150,60 +152,49 @@ class Persist
         return $return;
     }
 
-    public function initFormData($cfg = array())
+    protected function init()
     {
-        $this->cfg = \array_merge($this->cfg, $cfg);
+        $this->debug->groupCollapsed(__METHOD__);
         $formName = $this->cfg['formName'];
         if (isset($this->data[$formName])) {
-            $this->debug->info('data['.$formName.'] exists');
+            $this->debug->info('data[' . $formName . '] exists');
             $this->formData = &$this->data[$formName];
+            $this->debug->log('PRGState', $this->formData['PRGState']);
             $this->formData['timestamp'] = \microtime(true);
-            $this->formData['submitted'] = false;
-            if ($this->formData['PRGState'] === 'R') {
-                $this->debug->log('submitted... came from redirect');
-                $this->formData['PRGState'] = 'G';
-                $this->formData['submitted'] = true;
-            } else {
-                $isSubmitted = true;
-                if ($this->cfg['verifyKey']) {
-                    $this->debug->log('verifyKey', $this->cfg['userKey']);
-                    $isSubmitted = $this->verifyKey($this->cfg['userKey']);
-                }
-                if ($isSubmitted) {
-                    $this->debug->info('isSubmitted');
-                    $this->formData['submitted'] = true;
-                } else {
-                    unset($this->data[$formName]);
-                }
-            }
+        } else {
+            $this->initFormData();
         }
-        if (!isset($this->data[$formName])) {
-            $this->debug->warn('initializing formData');
-            $this->data[$formName] = array(
-                'name'      => $formName,
-                'pages'     => array(
-                    /*
-                    array(
-                        name        => page_name
-                        completed   => boolean
-                        values      => array()
-                        addPages    => array()  // list of page indexes
-                    ),
-                    ...
-                    ...
-                    */
+        $this->debug->groupEnd();
+    }
+
+    protected function initFormData()
+    {
+        $this->debug->info('initializing formData');
+        $formName = $this->cfg['formName'];
+        $this->data[$formName] = array(
+            'name'      => $formName,
+            'pages'     => array(
+                /*
+                array(
+                    name        => page_name
+                    completed   => boolean
+                    values      => array()
+                    addPages    => array()  // list of page indexes
                 ),
-                'i'         => 0,       // index to current page in pages
-                'PRGState' => null,     // P, R, or G
-                'submitted' => false,
-                'key'       => \md5(\uniqid(\rand(), true)),
-                'persist'   => $this->cfg['persist'],
-                'timestamp' => \microtime(true),
-                'trashCollectable' => $this->cfg['trashCollectable'],
-                'ver' => $this->ver,
-            );
-            $this->formData = &$this->data[$formName];
-        }
+                ...
+                ...
+                */
+            ),
+            'i'         => 0,       // index to current page in pages
+            'PRGState' => null,     // P, R, or G
+            'submitted' => false,
+            'key'       => \md5(\uniqid(\rand(), true)),
+            'persist'   => $this->cfg['persist'],
+            'timestamp' => \microtime(true),
+            'trashCollectable' => $this->cfg['trashCollectable'],
+            'ver' => $this->ver,
+        );
+        $this->formData = &$this->data[$formName];
     }
 
     /**
@@ -235,9 +226,10 @@ class Persist
      */
     public function remove()
     {
-        $name = $this->formData['name'];
+        // $name = $this->formData['name'];
+        $formName = $this->cfg['formName'];
         $this->trashCollectFiles($this->formData);
-        unset($this->data[$name]);
+        unset($this->data[$formName]);
         $this->formData = array();
         if (\array_keys($this->data) == array('global')) {
             // empty sans global
@@ -309,11 +301,11 @@ class Persist
                 continue;
             }
             if (isset($this->data['name']) && $key == $this->formData['name']) {
-                $this->debug->warn('not trashing current form');
+                $this->debug->info('not trashing current form');
                 continue;
             }
             $tsDiff = $tsNow - $val['timestamp'];
-            $this->debug->log($key.' created '.\number_format($tsDiff, 4).' sec ago');
+            $this->debug->log($key . ' created ' . \number_format($tsDiff, 4) . ' sec ago');
             // && ( empty($_SERVER['HTTP_USER_AGENT']) || \strpos($_SERVER['HTTP_USER_AGENT'], 'Safari') )
             /*
             primarily a Safari issue
@@ -357,13 +349,40 @@ class Persist
         foreach ($data['pages'] as $info) {
             foreach ($info['values'] as $a) {
                 if (\is_array($a) && !empty($a['tmp_name']) && \file_exists($a['tmp_name'])) {
-                    $this->debug->log('deleting '.$a['tmp_name']);
+                    $this->debug->log('deleting ' . $a['tmp_name']);
                     \unlink($a['tmp_name']);
                 }
             }
         }
         $this->debug->groupEnd();
         return;
+    }
+
+    public function updateState($cfg = array())
+    {
+        $this->debug->group(__METHOD__);
+        $this->cfg = \array_merge($this->cfg, $cfg);
+        // $formName = $this->cfg['formName'];
+        $this->formData['submitted'] = false;
+        if ($this->formData['PRGState'] === 'R') {
+            $this->debug->info('submitted... came from redirect');
+            $this->formData['PRGState'] = 'G';
+            $this->formData['submitted'] = true;
+        } else {
+            $isSubmitted = true;
+            if ($this->cfg['verifyKey']) {
+                $isSubmitted = $this->verifyKey($this->cfg['userKey']);
+            }
+            if ($isSubmitted) {
+                $this->formData['submitted'] = true;
+            } else {
+                $this->debug->warn('not submitted -> clearing form data');
+                // unset($this->data[$formName]);
+                // $this->remove();
+                $this->initFormData();
+            }
+        }
+        $this->debug->groupEnd();
     }
 
     /**

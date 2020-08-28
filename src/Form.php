@@ -11,6 +11,7 @@ use bdk\Form\ControlFactory;
 use bdk\Form\Output;
 use bdk\Form\Persist;
 use bdk\PubSub\Manager as EventManager;
+use bdk\PubSub\Event;
 
 /**
  * Form
@@ -38,7 +39,9 @@ class Form
     );
     public $currentControls = array();
     public $currentValues = array();
+    public $debug;
     public $eventManager;
+    protected static $subsRegistered = false;
 
     /**
      * Constructor
@@ -51,10 +54,11 @@ class Form
         $this->debug = \bdk\Debug::getInstance();
         $this->debug->groupCollapsed(__METHOD__);
         $this->eventManager = $eventManager ?: $this->debug->eventManager;
+        $cfg = ArrayUtil::mergeDeep($this->cfg, $cfg);
         $event = $this->eventManager->publish('form.construct', $this, array(
             'cfgDefault' => array(
                 // pages                => array        // pass one or the other
-                // contnrols            => array        //
+                // controls             => array        //
                 'name'                  => 'myform',
                 'buildAlerts'           => true,    // or callable
                 'buildOutput'           => true,    // or callable
@@ -79,7 +83,7 @@ class Form
                 'headersCache'          => 'auto',      // true, false, or 'auto'
                 'output' => array(
                     'autofocus'     => true,        // will set autofocus attribute on first form element
-                    'filepathScript'=> __DIR__.'/js/Form.jquery.js', // false or null to not include
+                    'filepathScript' => __DIR__ . '/js/Form.jquery.js', // false or null to not include
                     'formWrap'      => true,        // <form></form>
                     'inputKey'      => true,        // <input name="_key_" />
                     'reqDepJs'      => true,
@@ -104,6 +108,7 @@ class Form
                     'idPrefix' => !empty($cfg['name']) ? $cfg['name'] : null,   // will get set to "formName"
                 ),
                 'controlDefaultsPerType' => array(),
+                'theme' => 'bootstrap4',
                 'messages' => array(
                     'completed'         => null,
                     'completedAlert'    => null,
@@ -114,14 +119,18 @@ class Form
                 ),
                 'services' => $this->getDefaultServices(),
             ),
-            'cfgPassed' => ArrayUtil::mergeDeep($this->cfg, $cfg),
+            'cfgPassed' => $cfg,
         ));
         $this->cfg = ArrayUtil::mergeDeep(
             $event->getValue('cfgDefault'),
             $event->getValue('cfgPassed'),
-            array('int_keys'=>'overwrite')
+            array('int_keys' => 'overwrite')
         );
-        $this->debug->log('cfg', $this->cfg);
+        // $this->debug->warn('cfg', $this->cfg);
+        if (!static::$subsRegistered) {
+            $this->eventManager->subscribe('form.buildControls', array($this, 'onBuildControls'));
+            static::$subsRegistered = true;
+        }
         $this->debug->groupEnd();
     }
 
@@ -134,7 +143,7 @@ class Form
      */
     public function &__get($property)
     {
-        $getter = 'get'.\ucfirst($property);
+        $getter = 'get' . \ucfirst($property);
         if (isset($this->cfg['services'][$property])) {
             $val = $this->cfg['services'][$property];
             if (\is_object($val) && \method_exists($val, '__invoke')) {
@@ -180,26 +189,26 @@ class Form
                 'delete' => false,
                 'headers' => array(
                     'Content-Type' => isset($mimetypes[$ext]) ? $mimetypes[$ext] : null,
-                    'Content-Disposition' => 'inline; filename='.\basename($asset).';',
+                    'Content-Disposition' => 'inline; filename=' . \basename($asset) . ';',
                 ),
             );
         } else {
-            $hash = md5($asset['data']);
+            $hash = \md5($asset['data']);
             $asset = \array_merge(array(
                 'data' => null,
                 'delete' => true,
                 'headers' => array(),
             ), $asset);
         }
-        $this->persist->set('global/assets/'.$hash, $asset);
-        return '/formAsset/?hash='.$hash;
+        $this->persist->set('global/assets/' . $hash, $asset);
+        return '/formAsset/?hash=' . $hash;
     }
 
     public function assetGet($hash)
     {
-        $asset = $this->persist->get('global/assets/'.$hash);
+        $asset = $this->persist->get('global/assets/' . $hash);
         if ($asset['delete'] && !empty($asset['data'])) {
-            $this->persist->set('global/assets/'.$hash, null);
+            $this->persist->set('global/assets/' . $hash, null);
         }
         return $asset;
     }
@@ -215,7 +224,7 @@ class Form
             return '';
         }
         if (\is_callable($this->cfg['buildAlerts'])) {
-            return \call_user_func($this->cfg['buildAlerts'], $this->form);
+            return \call_user_func($this->cfg['buildAlerts'], $this);
         }
         return $this->alerts->buildAlerts();
     }
@@ -231,7 +240,7 @@ class Form
     {
         $html = '';
         if (\is_callable($this->cfg['buildOutput'])) {
-            $html = \call_user_func($this->cfg['buildOutput'], $this->form);
+            $html = \call_user_func($this->cfg['buildOutput'], $this);
         }
         if (!$html) {
             $html = $this->output->buildOutputDefault();
@@ -269,9 +278,12 @@ class Form
                     continue;
                 }
                 foreach ($this->cfg['pages'][$pageName] as $k => $controlProps) {
-                    if ($k === $controlName
-                        || isset($controlProps['attribs']['name']) && $controlProps['attribs']['name'] == $controlName
-                        || isset($controlProps['name']) && $controlProps['name'] == $controlName
+                    if (
+                        $k === $controlName
+                        || isset($controlProps['attribs']['name'])
+                            && $controlProps['attribs']['name'] == $controlName
+                        || isset($controlProps['name'])
+                            && $controlProps['name'] == $controlName
                     ) {
                         $this->debug->info('found control');
                         $controlProps['pageI'] = $pageI;
@@ -329,7 +341,7 @@ class Form
         if ($pageI === null) {
             $pageI = $this->persist->get('i');
         }
-        $val = $this->persist->get('pages/'.$pageI.'/values/'.$key);
+        $val = $this->persist->get('pages/' . $pageI . '/values/' . $key);
         $this->debug->groupEnd($val);
         return $val;
     }
@@ -431,7 +443,7 @@ class Form
                 $status['error'] = 'pre error';
             }
         }
-        $this->buildControls();
+        $this->eventManager->publish('form.buildControls', $this);
         $this->debug->groupEnd();
         return;
     }
@@ -460,7 +472,7 @@ class Form
         if ($pageI === null) {
             $pageI = $this->persist->get('i');
         }
-        $this->persist->set('pages/'.$pageI.'/values/'.$key, $value);
+        $this->persist->set('pages/' . $pageI . '/values/' . $key, $value);
         $this->debug->groupEnd();
         return;
     }
@@ -503,9 +515,9 @@ class Form
             }
         }
         $pagesRem = \array_diff($currentAddPagesNames, $pagesAdd);
-        $this->debug->log('pagesRem', '['.\implode(', ', $pagesRem).']');
-        $this->debug->log('pagesNext', '['.\implode(', ', $pagesNext).']');
-        $this->debug->log('pagesEnd', '['.\implode(', ', $pagesEnd).']');
+        $this->debug->log('pagesRem', '[' . \implode(', ', $pagesRem) . ']');
+        $this->debug->log('pagesNext', '[' . \implode(', ', $pagesNext) . ']');
+        $this->debug->log('pagesEnd', '[' . \implode(', ', $pagesEnd) . ']');
         if ($pagesRem) {
             $this->pagesRemove($pagesRem);
         }
@@ -541,7 +553,7 @@ class Form
         $control = $this->controlFactory->build($controlProps);
         if ($this->status['submitted'] && $control->attribs['type'] != 'newPage') {
             $pageI = $this->persist->get('i');
-            $value = $this->persist->get('pages/'.$pageI.'/values/'.$control->attribs['name']);
+            $value = $this->persist->get('pages/' . $pageI . '/values/' . $control->attribs['name']);
             $control->val($value, false);
         }
         $this->debug->groupEnd();
@@ -549,29 +561,32 @@ class Form
     }
 
     /**
-     * Build current controls
+     * form.buildControls subscriber
+     *
+     * @param Event $event Event instance
      *
      * @return void
      */
-    protected function buildControls()
+    public function onBuildControls(Event $event)
     {
-        $this->debug->groupCollapsed(__METHOD__);
-        $status = &$this->status;
-        $persist = $this->persist;
-        $pageI = $this->persist->get('i');
+        $form = $event->getSubject();
+        $form->debug->groupCollapsed(__METHOD__);
+        $status = &$form->status;
+        $persist = $form->persist;
+        $pageI = $form->persist->get('i');
         $submitControlCount = 0;
-        $keys = \array_keys($this->currentControls);
+        $keys = \array_keys($form->currentControls);
         foreach ($keys as $k) {
-            $control = $this->currentControls[$k];
-            unset($this->currentControls[$k]);
+            $control = $form->currentControls[$k];
+            unset($form->currentControls[$k]);
             if (!\is_object($control)) {
-                $control = $this->buildControl($control, $k);
+                $control = $form->buildControl($control, $k);
             }
             $control->pageI = $pageI;
             if ($control->attribs['type'] == 'newPage') {
-                $this->debug->info('possible new page', $control->attribs['value']);
+                $form->debug->info('possible new page', $control->attribs['value']);
                 if ($control->isRequired()) {
-                    $this->debug->log('adding new page', $control->attribs['value']);
+                    $form->debug->log('adding new page', $control->attribs['value']);
                     $status['additionalPages'][] = $control;
                 }
                 continue;
@@ -585,30 +600,30 @@ class Form
                 : $k;
             $k = $keyBase;
             $i = 1;
-            while (isset($this->currentControls[$k])) {
-                $k = $keyBase.'_'.$i;
+            while (isset($form->currentControls[$k])) {
+                $k = $keyBase . '_' . $i;
                 $i++;
             }
-            $this->currentControls[$k] = $control;
+            $form->currentControls[$k] = $control;
         }
         if ($submitControlCount < 1) {
-            $this->debug->info('submit control not set');
+            $form->debug->info('submit control not set');
             $controlArray = array(
                 'type'  => 'submit',
-                'label' => !empty($status['additionalPages']) || $persist->pageCount() > $persist->pageCount(true)+1
+                'label' => !empty($status['additionalPages']) || $persist->pageCount() > $persist->pageCount(true) + 1
                             ? 'Continue'
                             : 'Submit',
                 'attribs' => array('class' => array('btn btn-primary', 'replace')),
                 'tagOnly' => true,
             );
-            $this->currentControls['submit'] = $this->controlFactory->build($controlArray);
-            $this->debug->log('array_keys(currentControls)', \array_keys($this->currentControls));
+            $form->currentControls['submit'] = $form->controlFactory->build($controlArray);
+            $form->debug->log('array_keys(currentControls)', \array_keys($form->currentControls));
         }
         if ($status['multipart']) {
-            $this->debug->log('<a target="_blank" href="http://www.php.net/manual/en/ini.php">post_max_size</a> = '.Str::getBytes(\ini_get('post_max_size')));
-            $this->debug->log('<a target="_blank" href="http://www.php.net/manual/en/ini.php">upload_max_filesize</a> = '.Str::getBytes(\ini_get('upload_max_filesize')));
+            $form->debug->log('<a target="_blank" href="http://www.php.net/manual/en/ini.php">post_max_size</a> = ' . Str::getBytes(\ini_get('post_max_size')));
+            $form->debug->log('<a target="_blank" href="http://www.php.net/manual/en/ini.php">upload_max_filesize</a> = ' . Str::getBytes(\ini_get('upload_max_filesize')));
         }
-        $this->debug->groupEnd();
+        $form->debug->groupEnd();
     }
 
     /**
@@ -621,7 +636,7 @@ class Form
         $this->debug->groupCollapsed(__METHOD__);
         $cfg = &$this->cfg;
         if (!isset($cfg['attribs']['id'])) {
-            $cfg['attribs']['id'] = 'form-'.\str_replace(' ', '_', $cfg['name']);
+            $cfg['attribs']['id'] = 'form-' . \str_replace(' ', '_', $cfg['name']);
         }
         if (!isset($cfg['attribs']['name'])) {
             $cfg['attribs']['name'] = \str_replace(' ', '_', $cfg['name']);
@@ -637,7 +652,7 @@ class Form
         if ($cfg['onComplete'] == 'log' && empty($cfg['logFile'])) {
             $callerInfo = Php::getCallerInfo();
             $dirname = \dirname($callerInfo['file']);
-            $cfg['logFile'] = $dirname.DIRECTORY_SEPARATOR.$cfg['name'].'_log.csv';
+            $cfg['logFile'] = $dirname . DIRECTORY_SEPARATOR . $cfg['name'] . '_log.csv';
         }
         $this->debug->groupEnd();
     }
@@ -649,7 +664,14 @@ class Form
                 return new Alerts();
             },
             'controlFactory' => function (Form $form) {
-                return new ControlFactory($form, $form->cfg['controlDefaults'], $form->cfg['controlDefaultsPerType']);
+                $defaultProps = array('default' => $form->cfg['controlDefaults']) + $form->cfg['controlDefaultsPerType'];
+                return new ControlFactory(
+                    $form,
+                    array(
+                        'theme' => $form->cfg['theme'],
+                        'defaultProps' => $defaultProps,
+                    )
+                );
             },
             'debug' => function () {
                 return \bdk\Debug::getInstance();
@@ -662,7 +684,6 @@ class Form
                     'formName'          => $form->cfg['name'],
                     'persist'           => $form->cfg['persist'],
                     'trashCollectable'  => $form->cfg['trashCollectable'],
-                    'verifyKey'         => $form->cfg['verifyKey'],
                 ));
             }
         );
@@ -697,9 +718,9 @@ class Form
         if ($cfg['headersCache']) {
             $headers = array(
                 // 'Pragma: public',
-                'Cache-Control: private, max-age='.(60*30), // .', must-revalidate',
-                'Last-Modified: '.\gmdate('D, d M Y H:i:s \G\M\T'),
-                'Expires: '.\gmdate('D, d M Y H:i:s \G\M\T', \time()+60*30),
+                'Cache-Control: private, max-age=' . (60 * 30), // .', must-revalidate',
+                'Last-Modified: ' . \gmdate('D, d M Y H:i:s \G\M\T'),
+                'Expires: ' . \gmdate('D, d M Y H:i:s \G\M\T', \time() + 60 * 30),
             );
         } else {
             $headers = array(
@@ -720,10 +741,11 @@ class Form
     private function initPersist()
     {
         $this->debug->groupCollapsed(__METHOD__);
-        $this->persist->initFormData(array(
+        $this->persist->updateState(array(
             'userKey' => isset($_REQUEST['_key_'])
                 ? $_REQUEST['_key_']
                 : null,
+            'verifyKey' => $this->cfg['verifyKey'],
         ));
         if (!$this->persist->pageCount()) {
             $this->debug->info('persist just created... add first page');
@@ -754,7 +776,7 @@ class Form
     {
         $this->debug->warn('onRedirect', $location);
         $this->debug->log('%cRedirect%c location: <a href="%s">%s</a>', 'font-weight:bold;', '', $location, $location);
-        \header('Location: '.$location);
+        \header('Location: ' . $location);
         exit;
     }
 
@@ -968,7 +990,7 @@ class Form
         }
         $this->debug->log('redirecting...');
         if (\headers_sent($file, $line)) {
-            $this->debug->warn('headers alrady sent from '.$file.' line '.$line);
+            $this->debug->warn('headers alrady sent from ' . $file . ' line ' . $line);
             return;
         }
         /*
@@ -1027,7 +1049,7 @@ class Form
             $this->debug->warn('POST method');
             if (isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > Str::getBytes(\ini_get('post_max_size'), true)) {
                 $this->debug->warn('post_max_size exceeded');
-                $this->alerts->add('Your upload has exceeded the '.Str::getBytes(\ini_get('post_max_size')).' limit');
+                $this->alerts->add('Your upload has exceeded the ' . Str::getBytes(\ini_get('post_max_size')) . ' limit');
                 $this->status['postMaxExceeded'] = true;
             }
             $values = $_POST;

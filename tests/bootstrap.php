@@ -13,24 +13,23 @@ foreach ($classMap as $old => $new) {
     }
 }
 
-require __DIR__.'/../vendor/autoload.php';
+require __DIR__ . '/../vendor/autoload.php';
 
-/*
+require '/Users/bkent/Dropbox/htdocs/bradkent.com/vendor/autoload.php';
 \bdk\Debug::_setCfg(array(
 	'collect' => true,
 	'output' => true,
     'onBootstrap' => function (\bdk\PubSub\Event $event) {
         $debug = $event->getSubject();
         if ($debug->getCfg('collect')) {
-            $wampPublisher = new \bdk\WampPublisher(array('realm'=>'debug'));
+            $wampPublisher = new \bdk\WampPublisher(array('realm' => 'debug'));
             if ($wampPublisher->connected) {
-                $outputWamp = new \bdk\Debug\Output\Wamp($debug, $wampPublisher);
-                $debug->setCfg('outputAs', $outputWamp);
+                $routeWamp = new \bdk\Debug\route\Wamp($debug, $wampPublisher);
+                $debug->setCfg('route', $routeWamp);
             }
         }
     },
 ));
-*/
 
 foreach (glob(__DIR__.'/*.php') as $filename) {
 	$basename = basename($filename, '.php');

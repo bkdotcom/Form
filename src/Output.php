@@ -38,8 +38,8 @@ class Output
             $exploded = \explode($ds, $selfPath);
             $rel = \array_pop($exploded);
             while ($last = \array_pop($exploded)) {
-                $rel = $last.$ds.$rel;
-                $selfPath = $docRoot.$ds.$rel;
+                $rel = $last . $ds . $rel;
+                $selfPath = $docRoot . $ds . $rel;
                 // $this->debug->log('trying ', $selfPath);
                 if (\realpath($selfPath) == __FILE__) {
                     break;
@@ -64,10 +64,10 @@ class Output
         $strAlerts = $this->form->buildAlerts();
         if ($status['error']) {
             $str = $strAlerts
-                .$cfg['messages']['error'];
+                . $cfg['messages']['error'];
         } elseif ($status['completed']) {
             $str = $strAlerts
-                .$cfg['messages']['completed'];
+                . $cfg['messages']['completed'];
         } elseif ($cfg['buildOutput']) {
             // $this->debug->warn('have buildOutput');
             $this->outputSetup();
@@ -76,8 +76,8 @@ class Output
                 $this->form,
                 array(
                     'output' => $strAlerts
-                        .$this->buildHiddenControls()
-                        .$this->buildOutput(),
+                        . $this->buildHiddenControls()
+                        . $this->buildOutput(),
                 )
             )->getValue('output');
             if ($cfg['output']['formWrap']) {
@@ -93,18 +93,18 @@ class Output
                     $attribs['action'] = $urlParts['path'];
                 }
                 #$this->debug->log('form attribs', $attribs);
-                $str = '<form'.Html::buildAttribString($attribs).'>'."\n"
-                    .$str
-                    .'</form>'."\n";
+                $str = '<form' . Html::buildAttribString($attribs) . '>' . "\n"
+                    . $str
+                    . '</form>' . "\n";
             }
             if ($cfg['output']['filepathScript'] && \file_exists($cfg['output']['filepathScript'])) {
-                $str .= '<script type="text/javascript">'
-                    .\file_get_contents($cfg['output']['filepathScript'])
-                    .'</script>';
+                $str .= '<script>'
+                    . \file_get_contents($cfg['output']['filepathScript'])
+                    . '</script>';
             }
             if ($cfg['output']['reqDepJs']) {
                 $outputScript = new OutputScript($this->form);
-                $str .= $outputScript->build()."\n";
+                $str .= $outputScript->build() . "\n";
             }
         }
         $this->debug->groupEnd();
@@ -139,7 +139,7 @@ class Output
         $this->debug->groupUncollapse();
         $str = '';
         foreach ($this->form->currentControls as $control) {
-            $str .= $control->build()."\n";
+            $str .= $control->build() . "\n";
         }
         $this->debug->groupEnd();
         return $str;
@@ -157,7 +157,7 @@ class Output
         $printOpts = &$cfg['output'];
         $hiddenControls = '';
         if ($printOpts['inputKey']) {   //  && $cfg['persist_method'] != 'none'
-            $hiddenControls .= '<input type="hidden" name="_key_" value="'.\htmlspecialchars($this->keyValue).'" />';
+            $hiddenControls .= '<input type="hidden" name="_key_" value="' . \htmlspecialchars($this->keyValue) . '" />';
         }
         if (\strtolower($cfg['attribs']['method']) == 'get') {
             $this->debug->warn('get method');
@@ -173,7 +173,7 @@ class Output
                     if (\in_array($k, $controlNames)) {
                         continue;
                     }
-                    $hiddenControls .= '<input type="hidden" name="'.\htmlspecialchars($k).'" value="'.\htmlspecialchars($v).'" />'."\n";
+                    $hiddenControls .= '<input type="hidden" name="' . \htmlspecialchars($k) . '" value="' . \htmlspecialchars($v) . '" />' . "\n";
                 }
             }
         }
@@ -192,7 +192,7 @@ class Output
         $this->debug->groupCollapsed(__METHOD__);
         $cfg        = $this->form->cfg;
         $persist    = $this->form->persist;
-        $this->keyValue = $persist->get('key').'_'.$persist->get('i');
+        $this->keyValue = $persist->get('key') . '_' . $persist->get('i');
         $this->debug->info('keyValue', $this->keyValue);
         if ($cfg['output']['autofocus']) {
             $autofocusControl = null;

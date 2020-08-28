@@ -27,17 +27,17 @@ class BuildControlTest extends \PHPUnit\Framework\TestCase
             $html = $controlFactory->controlBuilder->build($props);
             $html = preg_replace('/\n\s+/', "\n", $html);
             $htmlExpect = preg_replace('/\n\s+/', "\n", $htmlExpect);
-            $this->assertSame($htmlExpect, $html, 'Data set '.($i+1));
+            $this->assertSame($htmlExpect, $html, 'Data set ' . ($i + 1));
 
             $props['tagOnly'] = true;
             $tagOnly = $controlFactory->controlBuilder->build($props);
             if (is_string($tagOnlyExpect)) {
                 $tagOnly = preg_replace('/\n\s+/', "\n", $tagOnly);
                 $tagOnlyExpect = preg_replace('/\n\s+/', "\n", $tagOnlyExpect);
-                $this->assertSame($tagOnlyExpect, $tagOnly, 'Data set '.($i+1).' (tag only)');
+                $this->assertSame($tagOnlyExpect, $tagOnly, 'Data set ' . ($i + 1) . ' (tag only)');
             } else {
-                $this->assertInternalType('array', $tagOnly, 'Data set '.($i+1));
-                $this->assertArraySubset($tagOnlyExpect, $tagOnly, false, 'Data set '.($i+1).' (tag only)');
+                $this->assertInternalType('array', $tagOnly, 'Data set ' . ($i + 1));
+                $this->assertArraySubset($tagOnlyExpect, $tagOnly, false, 'Data set ' . ($i + 1) . ' (tag only)');
             }
         }
     }

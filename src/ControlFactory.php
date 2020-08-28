@@ -12,60 +12,57 @@ use bdk\Form\ControlBuilder;
 class ControlFactory
 {
 
-    public $defaultProps = array(
-        'addonAfter' => null,
-        'addonBefore' => null,
-        'attribs' => array(
-            'name' => null,
-            'id' => null,
-            'value' => null,
-            'type' => 'text',
-            'required' => false,
-            'class' => 'form-control',
-        ),
-        'attribsContainer' => array(
-            'class' => 'form-group',
-        ),
-        'attribsLabel' => array(
-            'class' => 'control-label',
-        ),
-        'attribsControls' => array(
-            'class' => 'controls',
-        ),
-        'attribsHelpBlock' => array(
-            'class' => 'help-block',
-        ),
-        'definition' => null,   // class that extends Control
-            // doBuild
-            // doValidate
-            // getValFormatted
-            // getValRaw
-            // setValRaw
-        'helpBlock' => '',
-        'idPrefix' => null,
-        'invalidReason' => null,
-        'isValid' => true,
-        'label' => '',
-        'tagname' => 'input',
-        'tagOnly' => false,
-        'template' => '<div {{attribsContainer}}>
-                <label {{attribsLabel}}>{{label}}</label>
-                <div {{attribsControls}}>
-                    {{input}}
-                    <span {{attribsHelpBlock}}>{{helpBlock}}</span>
-                </div>
-            </div>',
-        'build' => null,            // callable
-        'getValFormatted' => null,  // callable
-        'getValRaw' => null,        // callable
-        'setValRaw' => null,        // callable
-        'validate' => null,         // callable
+    public $cfg = array(
+        'theme' => 'bootstrap4',
     );
-
-    public $defaultPropsPerType = array(
+    public $controlBuilder;
+    public $defaultProps = array(
+        'default' => array(
+            'addonAfter' => null,
+            'addonBefore' => null,
+            'attribs' => array(
+                'name' => null,
+                'id' => null,
+                'value' => null,
+                'type' => 'text',
+                'required' => false,
+            ),
+            'attribsContainer' => array(),
+            'attribsLabel' => array(),
+            'attribsControls' => array(),
+            'attribsHelpBlock' => array(),
+            'attribsInputGroup' => array(),
+            'definition' => null,   // class that extends Control
+                // doBuild
+                // doValidate
+                // getValFormatted
+                // getValRaw
+                // setValRaw
+            'helpBlock' => '',
+            'idPrefix' => null,
+            'invalidReason' => null,
+            'isValid' => true,
+            'label' => '',
+            'tagname' => 'input',
+            'tagOnly' => false,
+            'template' => '<div {{attribsContainer}}>
+                    <label {{attribsLabel}}>{{label}}</label>
+                    <div {{attribsControls}}>
+                        {{input}}
+                        <span {{attribsHelpBlock}}>{{helpBlock}}</span>
+                    </div>
+                </div>',
+            'userEmail' => false,
+            'userName' => false,
+            'build' => null,            // callable
+            'getValFormatted' => null,  // callable
+            'getValRaw' => null,        // callable
+            'setValRaw' => null,        // callable
+            'validate' => null,         // callable
+        ),
         'button' => array(
             'attribs' => array(
-                'class' => array('btn btn-default', 'replace'),
+                'class' => array(null, 'replace'),
             ),
             'tagname' => 'button',
         ),
@@ -73,7 +70,15 @@ class ControlFactory
             'attribs' => array(
                 'class' => array(null, 'replace'),
             ),
+            'attribsInputLabel' => array(),
+            'attribsLabel' => array(),
             'checkboxGroup' => 'auto',  // single option returns a scalar, more than one returns an array
+            'inputLabelTemplate' => '<div {{attribsInputLabel}}>'
+                . '<label {{attribsLabel}}>'
+                    . '{{input}}'
+                    . '{{label}}'
+                . '</label>'
+                . '</div>' . "\n",
             'options' => array(),
             'useFieldset' => 'auto',
             'values' => array(),
@@ -124,21 +129,29 @@ class ControlFactory
             'attribs' => array(
                 'class' => array(null, 'replace'),
             ),
+            'attribsInputLabel' => array(),
+            'attribsLabel' => array(),
+            'inputLabelTemplate' => '<div {{attribsInputLabel}}>'
+                . '<label {{attribsLabel}}>'
+                    . '{{input}}'
+                    . '{{label}}'
+                . '</label>'
+                . '</div>' . "\n",
             'options' => array(),
             'useFieldset' => 'auto',
         ),
         'range' => array(
             'attribs' => array(
                 // 'pattern' => '-?\d+(\.\d+)?(e[-+]?\d+)?',
-                'min' => 0,
-                'max' => 100,
-                'step' => 1,
                 'class' => array(null, 'replace'), // don't want 'form-control', 'input-sm', etc
+                'max' => 100,
+                'min' => 0,
+                'step' => 1,
             ),
         ),
         'reset' => array(
             'attribs' => array(
-                'class' => array('btn btn-default', 'replace'),
+                'class' => array(null, 'replace'),
             ),
             'label' => 'Reset',
             'tagname' => 'button',
@@ -160,13 +173,13 @@ class ControlFactory
         ),
         'static' => array(
             'attribs' => array(
-                'class' => array('form-control-static', 'replace'),
+                'class' => array(null, 'replace'),
             ),
             'tagname' => 'div',
         ),
         'submit' => array(
             'attribs' => array(
-                'class' => array('btn btn-default', 'replace'),
+                'class' => array(null, 'replace'),
             ),
             'label' => 'Submit',
             'tagname' => 'button',
@@ -188,33 +201,29 @@ class ControlFactory
         ),
     );
 
-    public $controlBuilder;
     public $form;
 
     /**
      * Constructor
      *
-     * @param Form  $form                Form instance
-     * @param array $defaultProps        Default control properties
-     * @param array $defaultPropsPerType Default control properties per input type
+     * @param Form  $form Form instance
+     * @param array $cfg  Configuration options (incl defaultProps)
      */
-    public function __construct(Form $form = null, $defaultProps = array(), $defaultPropsPerType = array())
+    public function __construct(Form $form = null, $cfg = array())
     {
+        $defaultProps = isset($cfg['defaultProps'])
+            ? $cfg['defaultProps']
+            : array();
+        unset($cfg['defaultProps']);
+
         $this->form = $form;
-        $this->defaultProps = ArrayUtil::mergeDeep(
-            $this->classnamesToArray($this->defaultProps),
-            $this->classnamesToArray($defaultProps)
-        );
-        foreach ($defaultPropsPerType as $type => $props) {
-            if (!isset($this->defaultPropsPerType[$type])) {
-                $this->defaultPropsPerType[$type] = $props;
-                continue;
-            }
-            $this->defaultPropsPerType[$type] = ArrayUtil::mergeDeep(
-                $this->classnamesToArray($this->defaultPropsPerType[$type]),
-                $this->classnamesToArray($props)
-            );
+        $this->cfg = \array_merge($this->cfg, $cfg);
+
+        if (\is_string($this->cfg['theme'])) {
+            $this->cfg['theme'] = require __DIR__ . '/theme/' . $this->cfg['theme'] . '.php';
         }
+
+        $this->setDefaultProps($defaultProps);
         $this->controlBuilder = new ControlBuilder($this);
     }
 
@@ -232,7 +241,7 @@ class ControlFactory
         if ($definition) {
             $classes = array(
                 $definition,
-                '\\bdk\\Form\\ControlDefinitions\\'.\ucfirst($definition),
+                '\\bdk\\Form\\ControlDefinitions\\' . \ucfirst($definition),
             );
             foreach ($classes as $classCheck) {
                 if (\class_exists($classCheck)) {
@@ -252,6 +261,7 @@ class ControlFactory
      *
      * @return array
      */
+    /*
     protected static function classnamesToArray($props)
     {
         foreach ($props as $k => $v) {
@@ -261,6 +271,7 @@ class ControlFactory
         }
         return $props;
     }
+    */
 
     /**
      * Get control definition class name
@@ -277,8 +288,8 @@ class ControlFactory
         } elseif (isset($props['type'])) {
             $type = $props['type'];
         }
-        $propsType = isset($this->defaultPropsPerType[$type])
-            ? $this->defaultPropsPerType[$type]
+        $propsType = isset($this->defaultProps[$type])
+            ? $this->defaultProps[$type]
             : array();
         $definition = null;
         if (isset($props['definition'])) {
@@ -287,5 +298,42 @@ class ControlFactory
             $definition = $propsType['definition'];
         }
         return $definition;
+    }
+
+    /**
+     * [setDefaultProps description]
+     *
+     * @param array $defaultProps [description]
+     *
+     * @return void
+     */
+    protected function setDefaultProps($defaultProps)
+    {
+        $keys = \array_unique(\array_merge(
+            \array_keys($this->defaultProps),
+            \array_keys($this->cfg['theme']['defaultProps']),
+            \array_keys($defaultProps)
+        ));
+        foreach ($keys as $key) {
+            $stack = \array_filter(array(
+                isset($this->defaultProps[$key])
+                    ? $this->defaultProps[$key]
+                    : array(),
+                isset($this->cfg['theme']['defaultProps'][$key])
+                    ? $this->cfg['theme']['defaultProps'][$key]
+                    : array(),
+                isset($defaultProps[$key])
+                    ? $defaultProps[$key]
+                    : array()
+            ));
+            $this->defaultProps[$key] = $stack
+                ? \array_shift($stack)
+                : array();
+            while ($stack) {
+                $props = \array_shift($stack);
+                Control::mergeClassesPrep($this->defaultProps[$key], $props, true);
+                $this->defaultProps[$key] = ArrayUtil::mergeDeep($this->defaultProps[$key], $props);
+            }
+        }
     }
 }

@@ -11,10 +11,15 @@ class DataProvider
         $controlFactory = new ControlFactory(
             null,
             array(
-                'attribs' => array(
-                    'class' => 'input-sm',
+                'theme' => 'bootstrap3',
+                'defaultProps' => array(
+                    'default' => array(
+                        'attribs' => array(
+                            'class' => 'input-sm',
+                        ),
+                        'idPrefix' => 'unittest'
+                    ),
                 ),
-                'idPrefix' => 'unittest'
             )
         );
         return array(
@@ -26,14 +31,14 @@ class DataProvider
                     'name' => 'dob',
                     'label' => 'birthday',
                     'helpBlock' => 'The date of your birth',
-                    'addonAfter' => '<i class="glyphicon glyphicon-calendar"></i>'
+                    'addonAfter' => '<i class="fa fa-calendar"></i>'
                 ),
                 '<div class="form-group" id="unittest_dob_container">
                 <label class="control-label" for="unittest_dob">birthday</label>
                 <div class="controls">
                 <div class="input-group">
                 <input aria-describedby="unittest_dob_help_block" class="form-control hide-spinbtns input-sm" id="unittest_dob" name="dob" placeholder="yyyy-mm-dd" type="date" />
-                <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
                 </div>
                 <span class="help-block" id="unittest_dob_help_block">The date of your birth</span>
                 </div>
@@ -70,12 +75,12 @@ class DataProvider
                 <label class="control-label" for="unittest_email">email</label>
                 <div class="controls">
                 <div class="input-group">
-                <input class="form-control input-sm" id="unittest_email" name="email" required="required" type="email" x-moz-errormessage="This does not appear to be a valid email address" />
+                <input class="form-control input-sm" data-errormessage="This does not appear to be a valid email address" id="unittest_email" name="email" required="required" type="email" />
                 <span class="input-group-addon">@</span>
                 </div>
                 </div>
                 </div>',
-                '<input class="form-control input-sm" id="unittest_email_2" name="email" required="required" type="email" x-moz-errormessage="This does not appear to be a valid email address" />',
+                '<input class="form-control input-sm" data-errormessage="This does not appear to be a valid email address" id="unittest_email_2" name="email" required="required" type="email" />',
             ),
 
             // email
@@ -93,14 +98,14 @@ class DataProvider
                 <label class="control-label" for="unittest_email_invalid">email (invalid)</label>
                 <div class="controls">
                 <div class="input-group">
-                <input aria-describedby="unittest_email_invalid_help_block" class="form-control input-sm" id="unittest_email_invalid" name="email_invalid" required="required" type="email" x-moz-errormessage="This does not appear to be a valid email address" />
+                <input aria-describedby="unittest_email_invalid_help_block" class="form-control input-sm" data-errormessage="This does not appear to be a valid email address" id="unittest_email_invalid" name="email_invalid" required="required" type="email" />
                 <input id="unittest_email_invalid_notice" name="email_invalid_notice" type="hidden" />
                 <span class="input-group-addon">@</span>
                 </div>
                 <span class="help-block" id="unittest_email_invalid_help_block">This does not appear to be a valid email address</span>
                 </div>
                 </div>',
-                '<input class="form-control input-sm" id="unittest_email_invalid_2" name="email_invalid" required="required" type="email" x-moz-errormessage="This does not appear to be a valid email address" />
+                '<input class="form-control input-sm" data-errormessage="This does not appear to be a valid email address" id="unittest_email_invalid_2" name="email_invalid" required="required" type="email" />
                 <input id="unittest_email_invalid_notice_2" name="email_invalid_notice" type="hidden" />',
             ),
 
@@ -180,6 +185,23 @@ class DataProvider
                 </div>',
                 '<input autocapitalize="none" autocomplete="off" autocorrect="off" class="form-control input-sm" data-lpignore="true" id="unittest_password_2" name="password" type="password" />',
             ),
+            // color
+            array(
+                $controlFactory,
+                array(
+                    'type' => 'color',
+                    'name' => 'color',
+                    'label' => 'Color Picker',
+                    'value' => '#cc00cc',
+                ),
+                '<div class="form-group" id="unittest_color_container">
+                <label class="control-label" for="unittest_color">Color Picker</label>
+                <div class="controls">
+                <input class="form-control input-sm" id="unittest_color" name="color" type="color" value="#cc00cc" />
+                </div>
+                </div>',
+                '<input class="form-control input-sm" id="unittest_color_2" name="color" type="color" value="#cc00cc" />',
+            ),
             // range
             array(
                 $controlFactory,
@@ -203,14 +225,14 @@ class DataProvider
                     'label' => 'Search',
                     'type' => 'search',
                     // 'addonAfter' => '🔍',
-                    'addonAfter' => '<i class="glyphicon glyphicon-search"></i>'
+                    'addonAfter' => '<i class="fa fa-search"></i>'
                 ),
                 '<div class="form-group">
                 <label class="control-label">Search</label>
                 <div class="controls">
                 <div class="input-group">
                 <input class="form-control input-sm" placeholder="search" type="search" />
-                <span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>
+                <span class="input-group-addon"><i class="fa fa-search"></i></span>
                 </div>
                 </div>
                 </div>',
@@ -257,16 +279,16 @@ class DataProvider
                     'required' => true,
                     'options' => array(
                         'not in group',
-                        array('optgroup'=>true, 'label'=>'Group 1'),
+                        array('optgroup' => true, 'label' => 'Group 1'),
                         'Option 1.1',
-                        array('optgroup'=>true, 'label'=>'Group 2'),
+                        array('optgroup' => true, 'label' => 'Group 2'),
                         'Option 2.1',
                         'Option 2.2',
-                        array('optgroup'=>true, 'label'=>'Group 3 (disabled)', 'disabled' => true),
+                        array('optgroup' => true, 'label' => 'Group 3 (disabled)', 'disabled' => true),
                         'Option 3.1',
                         'Option 3.2',
                         'Option 3.3',
-                        array('optgroup'=>false),
+                        array('optgroup' => false),
                         'outside of group',
                     ),
                 ),
@@ -362,18 +384,18 @@ class DataProvider
                     'type' => 'tel',
                     'name' => 'homePhone',
                     'label' => 'Home Phone',
-                    'addonAfter' => '<i class="glyphicon glyphicon-earphone"></i>'
+                    'addonAfter' => '<i class="fa fa-phone"></i>'
                 ),
                 '<div class="form-group" id="unittest_homePhone_container">
                 <label class="control-label" for="unittest_homePhone">Home Phone</label>
                 <div class="controls">
                 <div class="input-group">
-                <input class="form-control input-sm" id="unittest_homePhone" name="homePhone" pattern="\(?[2-9]\d{2}[)-.]?[\s]?\d{3}[ -.]?\d{4}" placeholder="(nnn) nnn-nnnn" title="Phone: (nnn) nnn-nnnn" type="tel" x-moz-errormessage="Must be formatted (nnn) nnn-nnnn" />
-                <span class="input-group-addon"><i class="glyphicon glyphicon-earphone"></i></span>
+                <input class="form-control input-sm" data-errormessage="Must be formatted (nnn) nnn-nnnn" id="unittest_homePhone" name="homePhone" pattern="\(?[2-9]\d{2}[)-.]?[\s]?\d{3}[ -.]?\d{4}" placeholder="(nnn) nnn-nnnn" title="Phone: (nnn) nnn-nnnn" type="tel" />
+                <span class="input-group-addon"><i class="fa fa-phone"></i></span>
                 </div>
                 </div>
                 </div>',
-                '<input class="form-control input-sm" id="unittest_homePhone_2" name="homePhone" pattern="\(?[2-9]\d{2}[)-.]?[\s]?\d{3}[ -.]?\d{4}" placeholder="(nnn) nnn-nnnn" title="Phone: (nnn) nnn-nnnn" type="tel" x-moz-errormessage="Must be formatted (nnn) nnn-nnnn" />',
+                '<input class="form-control input-sm" data-errormessage="Must be formatted (nnn) nnn-nnnn" id="unittest_homePhone_2" name="homePhone" pattern="\(?[2-9]\d{2}[)-.]?[\s]?\d{3}[ -.]?\d{4}" placeholder="(nnn) nnn-nnnn" title="Phone: (nnn) nnn-nnnn" type="tel" />',
             ),
 
             // text (default)
@@ -415,14 +437,14 @@ class DataProvider
                     'type' => 'url',
                     'name' => 'homepage',
                     'label' => 'Home Page',
-                    'addonAfter' => '<i class="glyphicon glyphicon-globe"></i>',
+                    'addonAfter' => '<i class="fa fa-globe"></i>',
                 ),
                 '<div class="form-group" id="unittest_homepage_container">
                 <label class="control-label" for="unittest_homepage">Home Page</label>
                 <div class="controls">
                 <div class="input-group">
                 <input class="form-control input-sm" id="unittest_homepage" name="homepage" pattern="https?://([-\w\.]+)+(:\d+)?(/([-\w/\.]*(\?\S+)?)?)?" placeholder="http://" type="url" />
-                <span class="input-group-addon"><i class="glyphicon glyphicon-globe"></i></span>
+                <span class="input-group-addon"><i class="fa fa-globe"></i></span>
                 </div>
                 </div>
                 </div>',
@@ -439,18 +461,18 @@ class DataProvider
                     'name' => 'ccnum',
                     'label' => 'Credit Card',
                     'definition' => 'creditcard',
-                    'addonAfter' => '<i class="glyphicon glyphicon-credit-card"></i>'
+                    'addonAfter' => '<i class="fa fa-credit-card"></i>'
                 ),
                 '<div class="form-group" id="unittest_ccnum_container">
                 <label class="control-label" for="unittest_ccnum">Credit Card</label>
                 <div class="controls">
                 <div class="input-group">
-                <input autocomplete="off" class="form-control input-sm" data-lpignore="true" id="unittest_ccnum" maxlength="19" name="ccnum" pattern="((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})" placeholder="nnnn-nnnn-nnnn-nnnn" size="18" title="nnnn-nnnn-nnnn-nnnn" type="text" x-moz-errormessage="Must be a valid credit card #" />
-                <span class="input-group-addon"><i class="glyphicon glyphicon-credit-card"></i></span>
+                <input autocomplete="off" class="form-control input-sm" data-errormessage="Must be a valid credit card #" data-lpignore="true" id="unittest_ccnum" maxlength="19" name="ccnum" pattern="((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})" placeholder="nnnn-nnnn-nnnn-nnnn" size="18" title="nnnn-nnnn-nnnn-nnnn" type="text" />
+                <span class="input-group-addon"><i class="fa fa-credit-card"></i></span>
                 </div>
                 </div>
                 </div>',
-                '<input autocomplete="off" class="form-control input-sm" data-lpignore="true" id="unittest_ccnum_2" maxlength="19" name="ccnum" pattern="((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})" placeholder="nnnn-nnnn-nnnn-nnnn" size="18" title="nnnn-nnnn-nnnn-nnnn" type="text" x-moz-errormessage="Must be a valid credit card #" />',
+                '<input autocomplete="off" class="form-control input-sm" data-errormessage="Must be a valid credit card #" data-lpignore="true" id="unittest_ccnum_2" maxlength="19" name="ccnum" pattern="((4\d{3}|5[1-5]\d{2}|6011)([- ]?\d{4}){3}|3[47]\d{2}[- ]?\d{6}[- ]?\d{5})" placeholder="nnnn-nnnn-nnnn-nnnn" size="18" title="nnnn-nnnn-nnnn-nnnn" type="text" />',
             ),
             // dollar
             array(
@@ -465,11 +487,11 @@ class DataProvider
                 <div class="controls">
                 <div class="input-group">
                 <span class="input-group-addon"><i class="glyphicon glyphicon-usd"></i></span>
-                <input class="form-control input-sm" id="unittest_donation" name="donation" pattern="(-?\$?|\$-)(?=[\d.])\d{0,3}(,?\d{3})*(\.\d{1,2})?$" placeholder="xxxx.xx" size="12" title="xxxx.xx" type="text" x-moz-errormessage="Should be in the form $xxxx.xx" />
+                <input class="form-control input-sm" data-errormessage="Should be in the form $xxxx.xx" id="unittest_donation" name="donation" pattern="(-?\$?|\$-)(?=[\d.])\d{0,3}(,?\d{3})*(\.\d{1,2})?$" placeholder="xxxx.xx" size="12" title="xxxx.xx" type="text" />
                 </div>
                 </div>
                 </div>',
-                '<input class="form-control input-sm" id="unittest_donation_2" name="donation" pattern="(-?\$?|\$-)(?=[\d.])\d{0,3}(,?\d{3})*(\.\d{1,2})?$" placeholder="xxxx.xx" size="12" title="xxxx.xx" type="text" x-moz-errormessage="Should be in the form $xxxx.xx" />',
+                '<input class="form-control input-sm" data-errormessage="Should be in the form $xxxx.xx" id="unittest_donation_2" name="donation" pattern="(-?\$?|\$-)(?=[\d.])\d{0,3}(,?\d{3})*(\.\d{1,2})?$" placeholder="xxxx.xx" size="12" title="xxxx.xx" type="text" />',
             ),
             // postalcode
             array(
@@ -498,10 +520,10 @@ class DataProvider
                 '<div class="form-group" id="unittest_ssn_container">
                 <label class="control-label" for="unittest_ssn">SSN</label>
                 <div class="controls">
-                <input autocomplete="off" class="form-control input-sm" id="unittest_ssn" name="ssn" pattern="\d{3}[\. -]?\d{2}[\. -]?\d{4}" placeholder="nnn-nn-nnnn" size="11" title="SSN: nnn-nnnn" type="text" x-moz-errormessage="Must be formatted nnn-nn-nnnn" />
+                <input autocomplete="off" class="form-control input-sm" data-errormessage="Must be formatted nnn-nn-nnnn" id="unittest_ssn" name="ssn" pattern="\d{3}[\. -]?\d{2}[\. -]?\d{4}" placeholder="nnn-nn-nnnn" size="11" title="SSN: nnn-nnnn" type="text" />
                 </div>
                 </div>',
-                '<input autocomplete="off" class="form-control input-sm" id="unittest_ssn_2" name="ssn" pattern="\d{3}[\. -]?\d{2}[\. -]?\d{4}" placeholder="nnn-nn-nnnn" size="11" title="SSN: nnn-nnnn" type="text" x-moz-errormessage="Must be formatted nnn-nn-nnnn" />',
+                '<input autocomplete="off" class="form-control input-sm" data-errormessage="Must be formatted nnn-nn-nnnn" id="unittest_ssn_2" name="ssn" pattern="\d{3}[\. -]?\d{2}[\. -]?\d{4}" placeholder="nnn-nn-nnnn" size="11" title="SSN: nnn-nnnn" type="text" />',
             ),
 
             // button
@@ -511,12 +533,12 @@ class DataProvider
                     'idPrefix' => 'prefix',
                     'type' => 'button',
                     'name' => 'testBtn',
-                    'label' => '<i class="glyphicon glyphicon glyphicon-ok"></i> click me',
-                    'attribs' => array('class'=>'btn-primary'),
+                    'label' => '<i class="fa fa-ok"></i> click me',
+                    'attribs' => array('class' => 'btn-primary'),
                     'tagOnly' => true,
                 ),
-                '<button class="btn btn-default btn-primary" id="prefix_testBtn" name="testBtn" type="button"><i class="glyphicon glyphicon glyphicon-ok"></i> click me</button>',
-                '<button class="btn btn-default btn-primary" id="prefix_testBtn_2" name="testBtn" type="button"><i class="glyphicon glyphicon glyphicon-ok"></i> click me</button>',
+                '<button class="btn btn-default btn-primary" id="prefix_testBtn" name="testBtn" type="button"><i class="fa fa-ok"></i> click me</button>',
+                '<button class="btn btn-default btn-primary" id="prefix_testBtn_2" name="testBtn" type="button"><i class="fa fa-ok"></i> click me</button>',
             ),
             // reset
             array(
@@ -568,7 +590,7 @@ class DataProvider
                                 'id' => 'unittest_cb1_2', 'name' => 'cb1', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'value' => 'on',
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -600,10 +622,17 @@ class DataProvider
                     'options' => array(
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_cb2_2', 'name' => 'cb2', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => true, 'disabled' => true, 'value' => 'marshmallow',
+                                'id' => 'unittest_cb2_2',
+                                'name' => 'cb2',
+                                'type' => 'checkbox',
+                                'required' => false,
+                                'class' => null,
+                                'checked' => true,
+                                'disabled' => true,
+                                'value' => 'marshmallow',
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                     'disabled',
@@ -623,7 +652,7 @@ class DataProvider
                     'name' => 'cb4',
                     'type' => 'checkbox',
                     'options' => array(
-                        array('value'=>'dingus', 'label'=>'Checkbox Group w/o group label')
+                        array('value' => 'dingus', 'label' => 'Checkbox Group w/o group label')
                     ),
                 ),
                 '<div class="form-group" id="unittest_cb4_container">
@@ -636,10 +665,16 @@ class DataProvider
                     'options' => array(
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_cb4_2', 'name' => 'cb4', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'value' => 'dingus',
+                                'id' => 'unittest_cb4_2',
+                                'name' => 'cb4',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => array(),
+                                'checked' => false,
+                                'value' => 'dingus',
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -674,10 +709,16 @@ class DataProvider
                     'options' => array(
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_cb3_2', 'name' => 'cb3', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'value' => 'Scooby Doo',
+                                'id' => 'unittest_cb3_2',
+                                'name' => 'cb3',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
+                                'value' => 'Scooby Doo',
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -718,10 +759,16 @@ class DataProvider
                     'options' => array(
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things1_2_1', 'name' => 'things1[]', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'value' => 'Burrito',
+                                'id' => 'unittest_things1_2_1',
+                                'name' => 'things1[]',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
+                                'value' => 'Burrito',
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -731,10 +778,16 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things1_2_2', 'name' => 'things1[]', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => true, 'value' => 'Chicken',
+                                'id' => 'unittest_things1_2_2',
+                                'name' => 'things1[]',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => true,
+                                'value' => 'Chicken',
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -744,10 +797,17 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things1_2_3', 'name' => 'things1[]', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false, 'disabled' => true, 'value' => 'Golf Ball',
+                                'id' => 'unittest_things1_2_3',
+                                'name' => 'things1[]',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
+                                'disabled' => true,
+                                'value' => 'Golf Ball',
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                     'disabled',
@@ -771,7 +831,7 @@ class DataProvider
                     'label' => 'Multiple already selected',
                     'required' => true,
                 ),
-                '<fieldset class="form-group" id="unittest_things_3_container">
+                '<fieldset class="form-group required" id="unittest_things_3_container">
 	                <legend>Multiple already selected</legend>
 	                <div class="controls">
 		                <div class="checkbox"><label><input checked="checked" id="unittest_things_3_1" name="things[]" type="checkbox" value="Hammer" />Hammer</label></div>
@@ -786,10 +846,16 @@ class DataProvider
                     'options' => array(
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_4_1', 'name' => 'things[]', 'value' => 'Hammer', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => true,
+                                'id' => 'unittest_things_4_1',
+                                'name' => 'things[]',
+                                'value' => 'Hammer',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => true,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -799,10 +865,16 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_4_2', 'name' => 'things[]', 'value' => 'Banana', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_2',
+                                'name' => 'things[]',
+                                'value' => 'Banana',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -812,10 +884,16 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_4_3', 'name' => 'things[]', 'value' => 'Pillow', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_3',
+                                'name' => 'things[]',
+                                'value' => 'Pillow',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -825,10 +903,16 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_4_4', 'name' => 'things[]', 'value' => 'Desk', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things_4_4',
+                                'name' => 'things[]',
+                                'value' => 'Desk',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -838,10 +922,16 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things_4_5', 'name' => 'things[]', 'value' => 'Stick', 'type' => 'checkbox', 'required' => false, 'class' => null, 'checked' => true,
+                                'id' => 'unittest_things_4_5',
+                                'name' => 'things[]',
+                                'value' => 'Stick',
+                                'type' => 'checkbox',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => true,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'checkbox',
                                 ),
@@ -880,10 +970,16 @@ class DataProvider
                     'options' => array(
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things2_2_1', 'name' => 'things2', 'value' => 'This', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things2_2_1',
+                                'name' => 'things2',
+                                'value' => 'This',
+                                'type' => 'radio',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'radio',
                                 ),
@@ -893,10 +989,16 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things2_2_2', 'name' => 'things2', 'value' => 'That', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => false,
+                                'id' => 'unittest_things2_2_2',
+                                'name' => 'things2',
+                                'value' => 'That',
+                                'type' => 'radio',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => false,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'radio',
                                 ),
@@ -906,10 +1008,17 @@ class DataProvider
                         ),
                         array(
                             'attribs' => array(
-                                'id' => 'unittest_things2_2_3', 'name' => 'things2', 'value' => 'Other', 'type' => 'radio', 'required' => false, 'class' => null, 'checked' => true, 'disabled' => true,
+                                'id' => 'unittest_things2_2_3',
+                                'name' => 'things2',
+                                'value' => 'Other',
+                                'type' => 'radio',
+                                // 'required' => false,
+                                'class' => null,
+                                'checked' => true,
+                                'disabled' => true,
                             ),
                             'attribsLabel' => array(),
-                            'attribsPair' => array(
+                            'attribsInputLabel' => array(
                                 'class' => array(
                                     'radio',
                                 ),
@@ -921,9 +1030,6 @@ class DataProvider
                     'useFieldset' => true,
                 ),
             ),
-
-
-
         );
     }
 }
